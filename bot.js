@@ -3752,6 +3752,8 @@ else if (data.startsWith('claim_gift_')) {
                 `🔑 ${escapeMarkdown(getProductLabel('account', 'Spotify Accounts'))}: Rp ${formatIDR(getAccountPrice())}`,
                 `🤖 ${escapeMarkdown(getProductLabel('gpt_basic', 'GPT Basics'))}: Rp ${formatIDR(getGptBasicsPrice())}`,
                 `📩 ${escapeMarkdown(getProductLabel('gpt_invite', 'GPT via Invite'))}: ${formatGptInvitePriceSummary()}`,
+                `🚀 ${escapeMarkdown(getProductLabel('gpt_go', 'GPT Go'))}: ${formatGptGoPriceSummary()}`,
+                `✨ ${escapeMarkdown(getProductLabel('gpt_plus', 'GPT Plus'))}: ${formatGptPlusPriceSummary()}`,
                 `🎬 ${escapeMarkdown(getProductLabel('alight_motion', 'Alight Motion'))}: ${formatAlightPriceSummary()}`,
                 `🧠 ${escapeMarkdown(settings.perplexity?.label || 'Perplexity AI')}: ${formatPerplexityPriceSummary()}`
             ].join('\n');
@@ -3761,6 +3763,8 @@ else if (data.startsWith('claim_gift_')) {
                     [{ text: '🔑 Edit Spotify Accounts', callback_data: 'edit_product_account' }],
                     [{ text: '🤖 Edit GPT Basics', callback_data: 'edit_product_gpt_basic' }],
                     [{ text: '📩 Edit GPT via Invite', callback_data: 'edit_product_gpt_invite' }],
+                    [{ text: '🚀 Edit GPT Go', callback_data: 'edit_product_gpt_go' }],
+                    [{ text: '✨ Edit GPT Plus', callback_data: 'edit_product_gpt_plus' }],
                     [{ text: '🎬 Edit Alight Motion', callback_data: 'edit_product_alight_motion' }],
                     [{ text: '🧠 Edit Perplexity AI', callback_data: 'edit_product_perplexity' }],
                     [{ text: '🔙 Back', callback_data: 'back_to_admin_main' }]
@@ -3797,6 +3801,29 @@ else if (data.startsWith('claim_gift_')) {
                     `Leave label blank to keep current text.`,
                     { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
                 ).catch(() => {});
+            } else if (productKey === 'gpt_invite') {
+                bot.editMessageText(
+                    `📩 *EDIT GPT VIA INVITE*\n\n` +
+                    `Send FW|NW|Label (label optional).\n` +
+                    `Example: 40000|6000|GPT Business via Invite\n\n` +
+                    `FW = Full Warranty, NW = No Warranty.`,
+                    { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+                ).catch(() => {});
+            } else if (productKey === 'gpt_plus') {
+                bot.editMessageText(
+                    `✨ *EDIT GPT PLUS*\n\n` +
+                    `Send FW|NW|Label (label optional).\n` +
+                    `Example: 40000|10000|GPT Plus Plan Accounts`,
+                    { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+                ).catch(() => {});
+            } else if (productKey === 'gpt_go') {
+                bot.editMessageText(
+                    `🚀 *EDIT GPT GO*\n\n` +
+                    `Send Price|Label (label optional).\n` +
+                    `Example: 5000|GPT Go Plan Accounts\n\n` +
+                    `Only NW pricing is used for this product.`,
+                    { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+                ).catch(() => {});
             } else {
                 const label = getProductLabel(productKey, 'this product');
                 bot.editMessageText(
@@ -3818,6 +3845,8 @@ else if (data.startsWith('claim_gift_')) {
                 `🔑 ${escapeMarkdown(getProductLabel('account', 'Spotify Accounts'))}: Rp ${formatIDR(getAccountPrice())}`,
                 `🤖 ${escapeMarkdown(getProductLabel('gpt_basic', 'GPT Basics'))}: Rp ${formatIDR(getGptBasicsPrice())}`,
                 `📩 ${escapeMarkdown(getProductLabel('gpt_invite', 'GPT via Invite'))}: ${formatGptInvitePriceSummary()}`,
+                `🚀 ${escapeMarkdown(getProductLabel('gpt_go', 'GPT Go'))}: ${formatGptGoPriceSummary()}`,
+                `✨ ${escapeMarkdown(getProductLabel('gpt_plus', 'GPT Plus'))}: ${formatGptPlusPriceSummary()}`,
                 `🎬 ${escapeMarkdown(getProductLabel('alight_motion', 'Alight Motion'))}: ${formatAlightPriceSummary()}`,
                 `🧠 ${escapeMarkdown(settings.perplexity?.label || 'Perplexity AI')}: ${formatPerplexityPriceSummary()}`
             ].join('\n');
@@ -3827,6 +3856,8 @@ else if (data.startsWith('claim_gift_')) {
                     [{ text: '🔑 Edit Spotify Accounts', callback_data: 'edit_product_account' }],
                     [{ text: '🤖 Edit GPT Basics', callback_data: 'edit_product_gpt_basic' }],
                     [{ text: '📩 Edit GPT via Invite', callback_data: 'edit_product_gpt_invite' }],
+                    [{ text: '🚀 Edit GPT Go', callback_data: 'edit_product_gpt_go' }],
+                    [{ text: '✨ Edit GPT Plus', callback_data: 'edit_product_gpt_plus' }],
                     [{ text: '🎬 Edit Alight Motion', callback_data: 'edit_product_alight_motion' }],
                     [{ text: '🧠 Edit Perplexity AI', callback_data: 'edit_product_perplexity' }],
                     [{ text: '🔙 Back', callback_data: 'back_to_admin_main' }]
@@ -7922,19 +7953,18 @@ bot.on('message', async (msg) => {
                     `✅ User ID: ${targetUserId}\n` +
                     `👤 @${escapeMarkdown(users[targetUserId].username)}\n\n` +
                     `Step 2/2: Enter AMOUNT\n\n` +
-                    `💰 Range: ${formatIDR(MIN_TOPUP_AMOUNT)} - ${formatIDR(MAX_TOPUP_AMOUNT)}\n\n` +
+                    `💰 Any positive amount is allowed (custom top-up).\n\n` +
                     `Example: 50000`,
                     { parse_mode: 'Markdown' }
                 ).catch(() => {});
             }
             else if (state.step === 'amount') {
                 const amount = parseInt(text.replace(/\D/g, ''));
-                
-                if (isNaN(amount) || amount < MIN_TOPUP_AMOUNT || amount > MAX_TOPUP_AMOUNT) {
-                    bot.sendMessage(chatId, 
+
+                if (isNaN(amount) || amount <= 0) {
+                    bot.sendMessage(chatId,
                         `❌ Invalid amount!\n\n` +
-                        `💰 Min: Rp ${formatIDR(MIN_TOPUP_AMOUNT)}\n` +
-                        `💰 Max: Rp ${formatIDR(MAX_TOPUP_AMOUNT)}`
+                        `💰 Enter any amount above 0`,
                     ).catch(() => {});
                     return;
                 }
@@ -7954,7 +7984,7 @@ bot.on('message', async (msg) => {
                     date: new Date().toISOString(),
                     approved_at: new Date().toISOString(),
                     approved_by: userId,
-                    note: 'Admin credited balance'
+                    note: 'Custom admin top-up'
                 };
                 
                 addTopup(topup);
@@ -9562,6 +9592,90 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                     `• Base: Rp ${formatIDR(updated.perplexity.price)}\n` +
                     `• Bulk: Rp ${formatIDR(updated.perplexity.bulk_price)} (min ${updated.perplexity.bulk_threshold})\n` +
                     `• Label: ${escapeMarkdown(updated.perplexity.label)}`,
+                    { parse_mode: 'Markdown' }
+                ).catch(() => {});
+            } else if (productKey === 'gpt_invite') {
+                const parts = text.split('|').map(p => p.trim());
+                const fw = parseInt((parts[0] || '').replace(/\D/g, ''));
+                const nw = parseInt((parts[1] || '').replace(/\D/g, ''));
+                const label = parts[2] && parts[2].length > 0
+                    ? parts[2]
+                    : updated.gpt_invite?.label || 'GPT Business via Invite';
+
+                if (isNaN(fw) || fw <= 0 || isNaN(nw) || nw <= 0) {
+                    bot.sendMessage(chatId, '❌ Invalid prices! Use: FW|NW|Label').catch(() => {});
+                    return;
+                }
+
+                updated.gpt_invite = {
+                    ...updated.gpt_invite,
+                    fw_price: fw,
+                    nw_price: nw,
+                    label
+                };
+
+                saveProductSettings(updated);
+
+                bot.sendMessage(chatId,
+                    `✅ GPT via Invite updated!\n` +
+                    `• Full Warranty: Rp ${formatIDR(updated.gpt_invite.fw_price)}\n` +
+                    `• No Warranty: Rp ${formatIDR(updated.gpt_invite.nw_price)}\n` +
+                    `• Label: ${escapeMarkdown(updated.gpt_invite.label)}`,
+                    { parse_mode: 'Markdown' }
+                ).catch(() => {});
+            } else if (productKey === 'gpt_plus') {
+                const parts = text.split('|').map(p => p.trim());
+                const fw = parseInt((parts[0] || '').replace(/\D/g, ''));
+                const nw = parseInt((parts[1] || '').replace(/\D/g, ''));
+                const label = parts[2] && parts[2].length > 0
+                    ? parts[2]
+                    : updated.gpt_plus?.label || 'GPT Plus Plan Accounts';
+
+                if (isNaN(fw) || fw <= 0 || isNaN(nw) || nw <= 0) {
+                    bot.sendMessage(chatId, '❌ Invalid prices! Use: FW|NW|Label').catch(() => {});
+                    return;
+                }
+
+                updated.gpt_plus = {
+                    ...updated.gpt_plus,
+                    fw_price: fw,
+                    nw_price: nw,
+                    label
+                };
+
+                saveProductSettings(updated);
+
+                bot.sendMessage(chatId,
+                    `✅ GPT Plus updated!\n` +
+                    `• Full Warranty: Rp ${formatIDR(updated.gpt_plus.fw_price)}\n` +
+                    `• No Warranty: Rp ${formatIDR(updated.gpt_plus.nw_price)}\n` +
+                    `• Label: ${escapeMarkdown(updated.gpt_plus.label)}`,
+                    { parse_mode: 'Markdown' }
+                ).catch(() => {});
+            } else if (productKey === 'gpt_go') {
+                const parts = text.split('|').map(p => p.trim());
+                const price = parseInt((parts[0] || '').replace(/\D/g, ''));
+                const label = parts[1] && parts[1].length > 0
+                    ? parts[1]
+                    : updated.gpt_go?.label || 'GPT Go Plan Accounts';
+
+                if (isNaN(price) || price <= 0) {
+                    bot.sendMessage(chatId, '❌ Invalid price! Use: 5000|Label').catch(() => {});
+                    return;
+                }
+
+                updated.gpt_go = {
+                    ...updated.gpt_go,
+                    price,
+                    label
+                };
+
+                saveProductSettings(updated);
+
+                bot.sendMessage(chatId,
+                    `✅ GPT Go updated!\n` +
+                    `• NW Price: Rp ${formatIDR(updated.gpt_go.price)}\n` +
+                    `• Label: ${escapeMarkdown(updated.gpt_go.label)}`,
                     { parse_mode: 'Markdown' }
                 ).catch(() => {});
             } else if (productKey === 'alight_motion') {
