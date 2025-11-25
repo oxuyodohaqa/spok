@@ -205,6 +205,34 @@ function saveJSON(filename, data) {
     }
 }
 
+function mergeWithDefaults(defaults, overrides) {
+    if (Array.isArray(defaults)) {
+        return Array.isArray(overrides) ? overrides.slice() : defaults.slice();
+    }
+
+    const source = overrides && typeof overrides === 'object' ? overrides : {};
+    const merged = {};
+
+    for (const key of Object.keys(defaults)) {
+        const defaultValue = defaults[key];
+        const overrideValue = source[key];
+
+        if (defaultValue && typeof defaultValue === 'object' && !Array.isArray(defaultValue)) {
+            merged[key] = mergeWithDefaults(defaultValue, overrideValue);
+        } else if (overrideValue !== undefined && overrideValue !== null) {
+            merged[key] = overrideValue;
+        } else {
+            merged[key] = defaultValue;
+        }
+    }
+
+    for (const key of Object.keys(source)) {
+        if (!(key in defaults)) merged[key] = source[key];
+    }
+
+    return merged;
+}
+
 function getOrderCounter() {
     try {
         if (fs.existsSync(COUNTER_FILE)) {
@@ -532,11 +560,19 @@ function updatePricing(pricing) {
 }
 
 function getProductSettings() {
-    return loadJSON(PRODUCT_SETTINGS_FILE, DEFAULT_PRODUCT_SETTINGS);
+    const stored = loadJSON(PRODUCT_SETTINGS_FILE, DEFAULT_PRODUCT_SETTINGS);
+    const merged = mergeWithDefaults(DEFAULT_PRODUCT_SETTINGS, stored);
+
+    if (JSON.stringify(merged) !== JSON.stringify(stored)) {
+        saveJSON(PRODUCT_SETTINGS_FILE, merged);
+    }
+
+    return merged;
 }
 
 function saveProductSettings(settings) {
-    saveJSON(PRODUCT_SETTINGS_FILE, settings);
+    const merged = mergeWithDefaults(DEFAULT_PRODUCT_SETTINGS, settings);
+    saveJSON(PRODUCT_SETTINGS_FILE, merged);
 }
 
 function getProductLabel(productKey, fallback) {
