@@ -296,6 +296,11 @@ function updateGptPlusStock(accounts = []) {
     saveJSON(GPT_PLUS_FILE, { accounts });
 }
 
+// Alias for backward compatibility; ChatGPT Plus uses the same stock as GPT Plus
+function getChatGptPlusStock() {
+    return getGptPlusStock();
+}
+
 function getAlightMotionStock() {
     return loadJSON(ALIGHT_MOTION_FILE, { accounts: [] });
 }
