@@ -540,12 +540,6 @@ function getGptInvitePrice(variant = 'nw') {
     switch (variant) {
         case 'fw':
             return prices.fw;
-        case 'go':
-            return prices.go;
-        case 'plus_fw':
-            return prices.plus_fw;
-        case 'plus_nw':
-            return prices.plus_nw;
         default:
             return prices.nw;
     }
@@ -555,10 +549,7 @@ function formatGptInvitePriceSummary() {
     const prices = getGptInvitePrices();
     return [
         `FW Rp ${formatIDR(prices.fw)}`,
-        `NW Rp ${formatIDR(prices.nw)}`,
-        `Go Rp ${formatIDR(prices.go)}`,
-        `Plus FW Rp ${formatIDR(prices.plus_fw)}`,
-        `Plus NW Rp ${formatIDR(prices.plus_nw)}`
+        `NW Rp ${formatIDR(prices.nw)}`
     ].join(' | ');
 }
 
@@ -568,19 +559,13 @@ function formatGptInviteVariantLabel(variant = 'nw') {
             return 'Full Warranty';
         case 'nw':
             return 'No Warranty';
-        case 'go':
-            return 'Go Plan (No Warranty)';
-        case 'plus_fw':
-            return 'Plus Plan (Full Warranty)';
-        case 'plus_nw':
-            return 'Plus Plan (No Warranty)';
         default:
             return 'No Warranty';
     }
 }
 
 function normalizeGptInviteVariant(variant = 'nw') {
-    const allowed = ['fw', 'nw', 'go', 'plus_fw', 'plus_nw'];
+    const allowed = ['fw', 'nw'];
     return allowed.includes(variant) ? variant : 'nw';
 }
 
@@ -4443,21 +4428,12 @@ else if (data.startsWith('claim_gift_')) {
 
         else if (
             data === 'choose_gpt_invite_fw' ||
-            data === 'choose_gpt_invite_nw' ||
-            data === 'choose_gpt_invite_go' ||
-            data === 'choose_gpt_invite_plus_fw' ||
-            data === 'choose_gpt_invite_plus_nw'
+            data === 'choose_gpt_invite_nw'
         ) {
             const variant = normalizeGptInviteVariant(
                 data === 'choose_gpt_invite_fw'
                     ? 'fw'
-                    : data === 'choose_gpt_invite_nw'
-                        ? 'nw'
-                        : data === 'choose_gpt_invite_go'
-                            ? 'go'
-                            : data === 'choose_gpt_invite_plus_fw'
-                                ? 'plus_fw'
-                                : 'plus_nw'
+                    : 'nw'
             );
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
