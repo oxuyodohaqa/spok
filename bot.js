@@ -760,6 +760,19 @@ function getPerplexityConfig() {
     };
 }
 
+function buildProductPriceSummaryLines() {
+    const settings = getProductSettings();
+    return [
+        `🔑 ${escapeMarkdown(getProductLabel('account', 'Spotify Accounts'))}: Rp ${formatIDR(getAccountPrice())}`,
+        `🤖 ${escapeMarkdown(getProductLabel('gpt_basic', 'GPT Basics'))}: Rp ${formatIDR(getGptBasicsPrice())}`,
+        `📩 ${escapeMarkdown(getProductLabel('gpt_invite', 'GPT via Invite'))}: ${formatGptInvitePriceSummary()}`,
+        `🚀 ${escapeMarkdown(getProductLabel('gpt_go', 'GPT Go'))}: ${formatGptGoPriceSummary()}`,
+        `✨ ${escapeMarkdown(getProductLabel('gpt_plus', 'GPT Plus'))}: ${formatGptPlusPriceSummary()}`,
+        `🎬 ${escapeMarkdown(getProductLabel('alight_motion', 'Alight Motion'))}: ${formatAlightPriceSummary()}`,
+        `🧠 ${escapeMarkdown(settings.perplexity?.label || 'Perplexity AI')}: ${formatPerplexityPriceSummary()}`
+    ];
+}
+
 function getBonuses() {
     const bonuses = loadJSON(BONUSES_FILE, DEFAULT_BONUSES);
     if (!Array.isArray(bonuses)) return [];
@@ -3728,18 +3741,22 @@ else if (data.startsWith('claim_gift_')) {
             const pricingText = Object.keys(pricing).map((range, idx) =>
                 `${idx + 1}. ${range}: Rp ${formatIDR(pricing[range])}`
             ).join('\n');
-            
+
+            const productSummary = buildProductPriceSummaryLines().join('\n');
+
             const keyboard = {
                 inline_keyboard: [
                     [{ text: '✏️ Edit Pricing', callback_data: 'edit_pricing' }],
+                    [{ text: '🏷️ Edit Product Prices', callback_data: 'admin_product_settings' }],
                     [{ text: '🔙 Back', callback_data: 'back_to_admin_main' }]
                 ]
             };
-            
+
             bot.editMessageText(
                 `💵 *PRICING MANAGEMENT*\n\n` +
-                `Current Pricing:\n${pricingText}\n\n` +
-                `Choose an option:`,
+                `📈 Spotify link tiers:\n${pricingText}\n\n` +
+                `🏷️ Product prices:\n${productSummary}\n\n` +
+                `Use *Edit Pricing* for Spotify link tiers, or *Edit Product Prices* to change Spotify accounts, GPT, Alight Motion, or Perplexity labels and prices.`,
                 { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
             ).catch(() => {});
         }
@@ -3747,16 +3764,7 @@ else if (data.startsWith('claim_gift_')) {
         if (data === 'admin_product_settings') {
             if (!isAdmin(userId)) return;
 
-            const settings = getProductSettings();
-            const summary = [
-                `🔑 ${escapeMarkdown(getProductLabel('account', 'Spotify Accounts'))}: Rp ${formatIDR(getAccountPrice())}`,
-                `🤖 ${escapeMarkdown(getProductLabel('gpt_basic', 'GPT Basics'))}: Rp ${formatIDR(getGptBasicsPrice())}`,
-                `📩 ${escapeMarkdown(getProductLabel('gpt_invite', 'GPT via Invite'))}: ${formatGptInvitePriceSummary()}`,
-                `🚀 ${escapeMarkdown(getProductLabel('gpt_go', 'GPT Go'))}: ${formatGptGoPriceSummary()}`,
-                `✨ ${escapeMarkdown(getProductLabel('gpt_plus', 'GPT Plus'))}: ${formatGptPlusPriceSummary()}`,
-                `🎬 ${escapeMarkdown(getProductLabel('alight_motion', 'Alight Motion'))}: ${formatAlightPriceSummary()}`,
-                `🧠 ${escapeMarkdown(settings.perplexity?.label || 'Perplexity AI')}: ${formatPerplexityPriceSummary()}`
-            ].join('\n');
+            const summary = buildProductPriceSummaryLines().join('\n');
 
             const keyboard = {
                 inline_keyboard: [
@@ -3840,16 +3848,7 @@ else if (data.startsWith('claim_gift_')) {
         else if (data === 'admin_product_settings') {
             if (!isAdmin(userId)) return;
 
-            const settings = getProductSettings();
-            const summary = [
-                `🔑 ${escapeMarkdown(getProductLabel('account', 'Spotify Accounts'))}: Rp ${formatIDR(getAccountPrice())}`,
-                `🤖 ${escapeMarkdown(getProductLabel('gpt_basic', 'GPT Basics'))}: Rp ${formatIDR(getGptBasicsPrice())}`,
-                `📩 ${escapeMarkdown(getProductLabel('gpt_invite', 'GPT via Invite'))}: ${formatGptInvitePriceSummary()}`,
-                `🚀 ${escapeMarkdown(getProductLabel('gpt_go', 'GPT Go'))}: ${formatGptGoPriceSummary()}`,
-                `✨ ${escapeMarkdown(getProductLabel('gpt_plus', 'GPT Plus'))}: ${formatGptPlusPriceSummary()}`,
-                `🎬 ${escapeMarkdown(getProductLabel('alight_motion', 'Alight Motion'))}: ${formatAlightPriceSummary()}`,
-                `🧠 ${escapeMarkdown(settings.perplexity?.label || 'Perplexity AI')}: ${formatPerplexityPriceSummary()}`
-            ].join('\n');
+            const summary = buildProductPriceSummaryLines().join('\n');
 
             const keyboard = {
                 inline_keyboard: [
