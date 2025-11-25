@@ -31,6 +31,10 @@ const GPT_BASICS_PRICE_IDR = 50;
 // GPT via Invite pricing (IDR)
 const GPT_INVITE_FW_PRICE_IDR = 15_000; // Full Warranty
 const GPT_INVITE_NW_PRICE_IDR = 6_000;  // No Warranty
+const GPT_GO_PRICE_IDR = 5_000;         // Go plan (No Warranty only)
+const GPT_PLUS_FW_PRICE_IDR = 40_000;   // Plus plan (Full Warranty)
+const GPT_PLUS_NW_PRICE_IDR = 10_000;   // Plus plan (No Warranty)
+const CHATGPT_PLUS_PRICE_IDR = 80_000;  // ChatGPT Plus (single price)
 const ALIGHT_MOTION_PRICE_IDR = 4000;
 const ALIGHT_MOTION_PACK5_PRICE_IDR = 15000;
 const ALIGHT_MOTION_PACK50_PRICE_IDR = 50000;
@@ -58,6 +62,9 @@ const CUSTOM_CONTENT_FILE = 'custom_content.json';
 const PRODUCT_SETTINGS_FILE = 'product_settings.json';
 const GPT_BASICS_FILE = 'gpt_basics.json';
 const GPT_INVITE_FILE = 'gpt_invite.json';
+const GPT_GO_FILE = 'gpt_go.json';
+const GPT_PLUS_FILE = 'gpt_plus.json';
+const CHATGPT_PLUS_FILE = 'chatgpt_plus.json';
 const ALIGHT_MOTION_FILE = 'alight_motion.json';
 const PERPLEXITY_FILE = 'perplexity_accounts.json';
 
@@ -77,6 +84,19 @@ const DEFAULT_PRODUCT_SETTINGS = {
         fw_price: GPT_INVITE_FW_PRICE_IDR,
         nw_price: GPT_INVITE_NW_PRICE_IDR,
         label: 'GPT via Invite Accounts'
+    },
+    gpt_go: {
+        price: GPT_GO_PRICE_IDR,
+        label: 'GPT Go Plan Accounts'
+    },
+    gpt_plus: {
+        fw_price: GPT_PLUS_FW_PRICE_IDR,
+        nw_price: GPT_PLUS_NW_PRICE_IDR,
+        label: 'GPT Plus Plan Accounts'
+    },
+    chatgpt_plus: {
+        price: CHATGPT_PLUS_PRICE_IDR,
+        label: 'ChatGPT Plus Accounts'
     },
     alight_motion: {
         price: ALIGHT_MOTION_PRICE_IDR,
@@ -233,6 +253,30 @@ function getGptInviteStock() {
 
 function updateGptInviteStock(accounts = []) {
     saveJSON(GPT_INVITE_FILE, { accounts });
+}
+
+function getGptGoStock() {
+    return loadJSON(GPT_GO_FILE, { accounts: [] });
+}
+
+function updateGptGoStock(accounts = []) {
+    saveJSON(GPT_GO_FILE, { accounts });
+}
+
+function getGptPlusStock() {
+    return loadJSON(GPT_PLUS_FILE, { accounts: [] });
+}
+
+function updateGptPlusStock(accounts = []) {
+    saveJSON(GPT_PLUS_FILE, { accounts });
+}
+
+function getChatGptPlusStock() {
+    return loadJSON(CHATGPT_PLUS_FILE, { accounts: [] });
+}
+
+function updateChatGptPlusStock(accounts = []) {
+    saveJSON(CHATGPT_PLUS_FILE, { accounts });
 }
 
 function getAlightMotionStock() {
@@ -525,12 +569,103 @@ function getGptInvitePrices() {
 
 function getGptInvitePrice(variant = 'nw') {
     const prices = getGptInvitePrices();
-    return variant === 'fw' ? prices.fw : prices.nw;
+    switch (variant) {
+        case 'fw':
+            return prices.fw;
+        default:
+            return prices.nw;
+    }
 }
 
 function formatGptInvitePriceSummary() {
     const prices = getGptInvitePrices();
-    return `FW Rp ${formatIDR(prices.fw)} | NW Rp ${formatIDR(prices.nw)}`;
+    return [
+        `FW Rp ${formatIDR(prices.fw)}`,
+        `NW Rp ${formatIDR(prices.nw)}`
+    ].join(' | ');
+}
+
+function formatGptInviteVariantLabel(variant = 'nw') {
+    switch (variant) {
+        case 'fw':
+            return 'Full Warranty';
+        case 'nw':
+            return 'No Warranty';
+        default:
+            return 'No Warranty';
+    }
+}
+
+function normalizeGptInviteVariant(variant = 'nw') {
+    const allowed = ['fw', 'nw'];
+    return allowed.includes(variant) ? variant : 'nw';
+}
+
+function getGptGoPrice() {
+    const settings = getProductSettings();
+    const price = parseInt(settings?.gpt_go?.price);
+    return !isNaN(price) && price > 0 ? price : GPT_GO_PRICE_IDR;
+}
+
+function formatGptGoPriceSummary() {
+    return `NW Rp ${formatIDR(getGptGoPrice())}`;
+}
+
+function getGptPlusPrices() {
+    const settings = getProductSettings();
+    const fw = parseInt(settings?.gpt_plus?.fw_price);
+    const nw = parseInt(settings?.gpt_plus?.nw_price);
+    const legacy = parseInt(settings?.gpt_plus?.price);
+
+    return {
+        fw: !isNaN(fw) && fw > 0 ? fw : (!isNaN(legacy) && legacy > 0 ? legacy : GPT_PLUS_FW_PRICE_IDR),
+        nw: !isNaN(nw) && nw > 0 ? nw : (!isNaN(legacy) && legacy > 0 ? legacy : GPT_PLUS_NW_PRICE_IDR),
+        label: getProductLabel('gpt_plus', 'GPT Plus Plan Accounts')
+    };
+}
+
+function getGptPlusPrice(variant = 'nw') {
+    const prices = getGptPlusPrices();
+    switch (variant) {
+        case 'fw':
+            return prices.fw;
+        default:
+            return prices.nw;
+    }
+}
+
+function formatGptPlusPriceSummary() {
+    const prices = getGptPlusPrices();
+    return [
+        `FW Rp ${formatIDR(prices.fw)}`,
+        `NW Rp ${formatIDR(prices.nw)}`
+    ].join(' | ');
+}
+
+function formatGptPlusVariantLabel(variant = 'nw') {
+    switch (variant) {
+        case 'fw':
+            return 'Full Warranty';
+        case 'nw':
+            return 'No Warranty';
+        default:
+            return 'No Warranty';
+    }
+}
+
+function normalizeGptPlusVariant(variant = 'nw') {
+    const allowed = ['fw', 'nw'];
+    return allowed.includes(variant) ? variant : 'nw';
+}
+
+function getChatGptPlusPrice() {
+    const settings = getProductSettings();
+    const price = parseInt(settings?.chatgpt_plus?.price);
+    return !isNaN(price) && price > 0 ? price : CHATGPT_PLUS_PRICE_IDR;
+}
+
+function formatChatGptPlusPriceSummary() {
+    return `Rp ${formatIDR(getChatGptPlusPrice())}`;
 }
 
 function getAlightMotionPrice() {
@@ -1343,6 +1478,109 @@ async function deliverGptInvite(userId, orderId, quantity, pricePerAccount = get
     }
 }
 
+async function deliverGptGo(userId, orderId, quantity, pricePerAccount = getGptGoPrice()) {
+    try {
+        const stock = getGptGoStock();
+
+        if (!stock.accounts || stock.accounts.length < quantity) {
+            return { success: false, message: '❌ Not enough GPT Go accounts available to deliver!' };
+        }
+
+        const delivered = stock.accounts.splice(0, quantity);
+        updateGptGoStock(stock.accounts);
+
+        const credentials = delivered
+            .map(acc => `• \`${escapeInlineCode(acc)}\``)
+            .join('\n');
+
+        const totalPrice = quantity * pricePerAccount;
+
+        const message =
+            `✅ *GPT GO DELIVERED!*\n\n` +
+            `📋 Order #: ${orderId}\n` +
+            `🔢 Quantity: ${quantity}\n` +
+            `💵 Total: Rp ${formatIDR(totalPrice)} (${formatIDR(pricePerAccount)} each)\n\n` +
+            `🔑 Credentials:\n${credentials}\n\n` +
+            `📱 Support: ${ADMIN_USERNAME}`;
+
+        await bot.sendMessage(userId, message, { parse_mode: 'Markdown' });
+
+        return { success: true, delivered };
+    } catch (error) {
+        console.error('Error delivering GPT Go:', error.message);
+        return { success: false, message: '❌ Failed to deliver GPT Go account(s).' };
+    }
+}
+
+async function deliverGptPlus(userId, orderId, quantity, variant = 'nw', pricePerAccount = getGptPlusPrice(variant)) {
+    try {
+        const stock = getGptPlusStock();
+
+        if (!stock.accounts || stock.accounts.length < quantity) {
+            return { success: false, message: '❌ Not enough GPT Plus accounts available to deliver!' };
+        }
+
+        const delivered = stock.accounts.splice(0, quantity);
+        updateGptPlusStock(stock.accounts);
+
+        const credentials = delivered
+            .map(acc => `• \`${escapeInlineCode(acc)}\``)
+            .join('\n');
+
+        const totalPrice = quantity * pricePerAccount;
+
+        const message =
+            `✅ *GPT PLUS DELIVERED!*\n\n` +
+            `📋 Order #: ${orderId}\n` +
+            `🔢 Quantity: ${quantity}\n` +
+            `🛡️ Warranty: ${formatGptPlusVariantLabel(variant)}\n` +
+            `💵 Total: Rp ${formatIDR(totalPrice)} (${formatIDR(pricePerAccount)} each)\n\n` +
+            `🔑 Credentials:\n${credentials}\n\n` +
+            `📱 Support: ${ADMIN_USERNAME}`;
+
+        await bot.sendMessage(userId, message, { parse_mode: 'Markdown' });
+
+        return { success: true, delivered };
+    } catch (error) {
+        console.error('Error delivering GPT Plus:', error.message);
+        return { success: false, message: '❌ Failed to deliver GPT Plus account(s).' };
+    }
+}
+
+async function deliverChatGptPlus(userId, orderId, quantity, pricePerAccount = getChatGptPlusPrice()) {
+    try {
+        const stock = getChatGptPlusStock();
+
+        if (!stock.accounts || stock.accounts.length < quantity) {
+            return { success: false, message: '❌ Not enough ChatGPT Plus accounts available to deliver!' };
+        }
+
+        const delivered = stock.accounts.splice(0, quantity);
+        updateChatGptPlusStock(stock.accounts);
+
+        const credentials = delivered
+            .map(acc => `• \`${escapeInlineCode(acc)}\``)
+            .join('\n');
+
+        const totalPrice = quantity * pricePerAccount;
+
+        const message =
+            `✅ *CHATGPT PLUS DELIVERED!*\n\n` +
+            `📋 Order #: ${orderId}\n` +
+            `🔢 Quantity: ${quantity}\n` +
+            `💵 Total: Rp ${formatIDR(totalPrice)} (${formatIDR(pricePerAccount)} each)\n\n` +
+            `🔑 Credentials:\n${credentials}\n\n` +
+            `📱 Support: ${ADMIN_USERNAME}`;
+
+        await bot.sendMessage(userId, message, { parse_mode: 'Markdown' });
+
+        return { success: true, delivered };
+    } catch (error) {
+        console.error('Error delivering ChatGPT Plus:', error.message);
+        return { success: false, message: '❌ Failed to deliver ChatGPT Plus account(s).' };
+    }
+}
+
 async function deliverAlightMotion(userId, orderId, quantity, pricePerAccount = getAlightUnitPrice(quantity)) {
     try {
         const stock = getAlightMotionStock();
@@ -2038,6 +2276,13 @@ bot.onText(/\/start/, (msg) => {
                         { text: '🎬 Alight Motion', callback_data: 'admin_alight_motion' }
                     ],
                     [
+                        { text: '🚀 GPT Go', callback_data: 'admin_gpt_go' },
+                        { text: '✨ GPT Plus', callback_data: 'admin_gpt_plus' }
+                    ],
+                    [
+                        { text: '🌟 ChatGPT Plus', callback_data: 'admin_chatgpt_plus' }
+                    ],
+                    [
                         { text: '🧠 Perplexity AI', callback_data: 'admin_perplexity' },
                         { text: '💵 Pricing', callback_data: 'admin_pricing' }
                     ],
@@ -2070,6 +2315,9 @@ bot.onText(/\/start/, (msg) => {
             const accountStock = getAccountStock();
             const gptStock = getGptBasicsStock();
             const gptInviteStock = getGptInviteStock();
+            const gptGoStock = getGptGoStock();
+            const gptPlusStock = getGptPlusStock();
+            const chatGptPlusStock = getChatGptPlusStock();
             const alightStock = getAlightMotionStock();
             const perplexityStock = getPerplexityStock();
             const pendingTopups = getPendingTopups();
@@ -2085,6 +2333,9 @@ bot.onText(/\/start/, (msg) => {
                 `• Accounts: ${accountStock.accounts?.length || 0}\n` +
                 `• GPT Basics: ${gptStock.accounts?.length || 0}\n` +
                 `• GPT via Invite: ${gptInviteStock.accounts?.length || 0}\n` +
+                `• GPT Go: ${gptGoStock.accounts?.length || 0}\n` +
+                `• GPT Plus: ${gptPlusStock.accounts?.length || 0}\n` +
+                `• ChatGPT Plus: ${chatGptPlusStock.accounts?.length || 0}\n` +
                 `• Alight Motion: ${alightStock.accounts?.length || 0}\n` +
                 `• Perplexity: ${perplexityStock.links?.length || 0}\n` +
                 `• Pending Top-ups: ${pendingTopups.length}\n\n` +
@@ -2099,11 +2350,17 @@ bot.onText(/\/start/, (msg) => {
         const accountStock = getAccountStock();
         const gptStock = getGptBasicsStock();
         const gptInviteStock = getGptInviteStock();
+        const gptGoStock = getGptGoStock();
+        const gptPlusStock = getGptPlusStock();
+        const chatGptPlusStock = getChatGptPlusStock();
         const alightStock = getAlightMotionStock();
         const perplexityStock = getPerplexityStock();
         const accountAvailable = accountStock.accounts?.length || 0;
         const gptAvailable = gptStock.accounts?.length || 0;
         const gptInviteAvailable = gptInviteStock.accounts?.length || 0;
+        const gptGoAvailable = gptGoStock.accounts?.length || 0;
+        const gptPlusAvailable = gptPlusStock.accounts?.length || 0;
+        const chatGptPlusAvailable = chatGptPlusStock.accounts?.length || 0;
         const alightAvailable = alightStock.accounts?.length || 0;
         const perplexityAvailable = perplexityStock.links?.length || 0;
         const linkAvailable = stock.links?.length || 0;
@@ -2133,6 +2390,9 @@ bot.onText(/\/start/, (msg) => {
                 `🔑 ${escapeMarkdown(getProductLabel('account', 'Verified Spotify Account'))}: Rp ${formatIDR(getAccountPrice())}\n` +
                 `🤖 ${escapeMarkdown(getProductLabel('gpt_basic', 'GPT Basics Account'))}: Rp ${formatIDR(getGptBasicsPrice())}\n` +
                 `📩 ${escapeMarkdown(getProductLabel('gpt_invite', 'GPT via Invite'))}: ${formatGptInvitePriceSummary()}\n` +
+                `🚀 ${escapeMarkdown(getProductLabel('gpt_go', 'GPT Go'))}: ${formatGptGoPriceSummary()}\n` +
+                `✨ ${escapeMarkdown(getProductLabel('gpt_plus', 'GPT Plus'))}: ${formatGptPlusPriceSummary()}\n` +
+                `🌟 ${escapeMarkdown(getProductLabel('chatgpt_plus', 'ChatGPT Plus'))}: ${formatChatGptPlusPriceSummary()}\n` +
                 `🎬 ${escapeMarkdown(getProductLabel('alight_motion', 'Alight Motion Account'))}: ${formatAlightPriceSummary()}\n` +
                 `🧠 ${escapeMarkdown(getPerplexityConfig().label)}: ${formatPerplexityPriceSummary()}\n` +
                 `💳 Balance: Rp ${formatIDR(balance)}\n` +
@@ -2140,6 +2400,9 @@ bot.onText(/\/start/, (msg) => {
                 `🔑 Accounts in stock: ${accountAvailable}\n` +
                 `🤖 GPT Basics in stock: ${gptAvailable}\n` +
                 `📩 GPT via Invite in stock: ${gptInviteAvailable}\n` +
+                `🚀 GPT Go in stock: ${gptGoAvailable}\n` +
+                `✨ GPT Plus in stock: ${gptPlusAvailable}\n` +
+                `🌟 ChatGPT Plus in stock: ${chatGptPlusAvailable}\n` +
                 `🎬 Alight Motion in stock: ${alightAvailable}\n` +
                 `🧠 Perplexity links in stock: ${perplexityAvailable}\n\n` +
                 `💰 *Pricing:*\n` +
@@ -2426,11 +2689,14 @@ bot.on('document', (msg) => {
         const isAccountUpload = uploadMode === 'awaiting_account_upload';
         const isGptUpload = uploadMode === 'awaiting_gpt_upload';
         const isGptInviteUpload = uploadMode === 'awaiting_gpt_invite_upload';
+        const isGptGoUpload = uploadMode === 'awaiting_gpt_go_upload';
+        const isGptPlusUpload = uploadMode === 'awaiting_gpt_plus_upload';
+        const isChatGptPlusUpload = uploadMode === 'awaiting_chatgpt_plus_upload';
         const isAlightUpload = uploadMode === 'awaiting_alight_upload';
         const isPerplexityUpload = uploadMode === 'awaiting_perplexity_upload';
-        const isLinkUpload = uploadMode === 'awaiting_stock_upload' || (!uploadMode && !isGptUpload && !isPerplexityUpload && !isGptInviteUpload && !isAlightUpload);
+        const isLinkUpload = uploadMode === 'awaiting_stock_upload' || (!uploadMode && !isGptUpload && !isPerplexityUpload && !isGptInviteUpload && !isAlightUpload && !isGptGoUpload && !isGptPlusUpload && !isChatGptPlusUpload);
 
-        if (!isAccountUpload && !isLinkUpload && !isGptUpload && !isPerplexityUpload && !isGptInviteUpload && !isAlightUpload) return;
+        if (!isAccountUpload && !isLinkUpload && !isGptUpload && !isPerplexityUpload && !isGptInviteUpload && !isAlightUpload && !isGptGoUpload && !isGptPlusUpload && !isChatGptPlusUpload) return;
 
         const document = msg.document;
         
@@ -2439,7 +2705,7 @@ bot.on('document', (msg) => {
             return;
         }
         
-        const uploadingText = (isAccountUpload || isGptUpload || isPerplexityUpload || isGptInviteUpload || isAlightUpload) ? '⏳ Uploading accounts...' : '⏳ Uploading links...';
+        const uploadingText = (isAccountUpload || isGptUpload || isPerplexityUpload || isGptInviteUpload || isAlightUpload || isGptGoUpload || isGptPlusUpload || isChatGptPlusUpload) ? '⏳ Uploading accounts...' : '⏳ Uploading links...';
 
         bot.sendMessage(chatId, uploadingText).then(statusMsg => {
             bot.getFile(document.file_id).then(file => {
@@ -2452,7 +2718,7 @@ bot.on('document', (msg) => {
                     res.on('end', () => {
                         const lines = data.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-                        if (isAccountUpload || isGptUpload || isPerplexityUpload || isGptInviteUpload || isAlightUpload) {
+                        if (isAccountUpload || isGptUpload || isPerplexityUpload || isGptInviteUpload || isAlightUpload || isGptGoUpload || isGptPlusUpload || isChatGptPlusUpload) {
                             if (lines.length === 0) {
                                 bot.editMessageText(
                                     '❌ No valid accounts found! Add one credential per line.',
@@ -2494,6 +2760,63 @@ bot.on('document', (msg) => {
                                     `✅ *GPT INVITE UPLOADED!*\n\n` +
                                     `📤 Added: ${lines.length} accounts\n` +
                                     `📩 Total GPT via invite: ${merged.length}\n\n` +
+                                    `Thank you!`,
+                                    {
+                                        chat_id: chatId,
+                                        message_id: statusMsg.message_id,
+                                        parse_mode: 'Markdown'
+                                    }
+                                ).catch(() => {});
+
+                                delete userStates[chatId];
+                                return;
+                            } else if (isGptGoUpload) {
+                                const gptGoStock = getGptGoStock();
+                                const merged = [...(gptGoStock.accounts || []), ...lines];
+                                updateGptGoStock(merged);
+
+                                bot.editMessageText(
+                                    `✅ *GPT GO UPLOADED!*\n\n` +
+                                    `📤 Added: ${lines.length} accounts\n` +
+                                    `🚀 Total GPT Go: ${merged.length}\n\n` +
+                                    `Thank you!`,
+                                    {
+                                        chat_id: chatId,
+                                        message_id: statusMsg.message_id,
+                                        parse_mode: 'Markdown'
+                                    }
+                                ).catch(() => {});
+
+                                delete userStates[chatId];
+                                return;
+                            } else if (isGptPlusUpload) {
+                                const gptPlusStock = getGptPlusStock();
+                                const merged = [...(gptPlusStock.accounts || []), ...lines];
+                                updateGptPlusStock(merged);
+
+                                bot.editMessageText(
+                                    `✅ *GPT PLUS UPLOADED!*\n\n` +
+                                    `📤 Added: ${lines.length} accounts\n` +
+                                    `✨ Total GPT Plus: ${merged.length}\n\n` +
+                                    `Thank you!`,
+                                    {
+                                        chat_id: chatId,
+                                        message_id: statusMsg.message_id,
+                                        parse_mode: 'Markdown'
+                                    }
+                                ).catch(() => {});
+
+                                delete userStates[chatId];
+                                return;
+                            } else if (isChatGptPlusUpload) {
+                                const chatGptPlusStock = getChatGptPlusStock();
+                                const merged = [...(chatGptPlusStock.accounts || []), ...lines];
+                                updateChatGptPlusStock(merged);
+
+                                bot.editMessageText(
+                                    `✅ *CHATGPT PLUS UPLOADED!*\n\n` +
+                                    `📤 Added: ${lines.length} accounts\n` +
+                                    `🌟 Total ChatGPT Plus: ${merged.length}\n\n` +
                                     `Thank you!`,
                                     {
                                         chat_id: chatId,
@@ -3939,6 +4262,72 @@ else if (data.startsWith('claim_gift_')) {
             ).catch(() => {});
         }
 
+        else if (data === 'admin_gpt_go') {
+            if (!isAdmin(userId)) return;
+
+            const gptGoStock = getGptGoStock();
+            const available = gptGoStock.accounts?.length || 0;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '📤 Upload GPT Go File', callback_data: 'upload_gpt_go_instruction' }],
+                    [{ text: '📊 Check GPT Go Stock', callback_data: 'check_gpt_go_stock' }],
+                    [{ text: '🔙 Back', callback_data: 'back_to_admin_main' }]
+                ]
+            };
+
+            bot.editMessageText(
+                `🚀 *GPT GO INVENTORY*\n\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `Use the options below to upload or check stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
+        else if (data === 'admin_gpt_plus') {
+            if (!isAdmin(userId)) return;
+
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '📤 Upload GPT Plus File', callback_data: 'upload_gpt_plus_instruction' }],
+                    [{ text: '📊 Check GPT Plus Stock', callback_data: 'check_gpt_plus_stock' }],
+                    [{ text: '🔙 Back', callback_data: 'back_to_admin_main' }]
+                ]
+            };
+
+            bot.editMessageText(
+                `✨ *GPT PLUS INVENTORY*\n\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `Use the options below to upload or check stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
+        else if (data === 'admin_chatgpt_plus') {
+            if (!isAdmin(userId)) return;
+
+            const chatGptPlusStock = getChatGptPlusStock();
+            const available = chatGptPlusStock.accounts?.length || 0;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '📤 Upload ChatGPT Plus File', callback_data: 'upload_chatgpt_plus_instruction' }],
+                    [{ text: '📊 Check ChatGPT Plus Stock', callback_data: 'check_chatgpt_plus_stock' }],
+                    [{ text: '🔙 Back', callback_data: 'back_to_admin_main' }]
+                ]
+            };
+
+            bot.editMessageText(
+                `🌟 *CHATGPT PLUS INVENTORY*\n\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `Use the options below to upload or check stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
         else if (data === 'admin_alight_motion') {
             if (!isAdmin(userId)) return;
 
@@ -4034,6 +4423,57 @@ else if (data.startsWith('claim_gift_')) {
             ).catch(() => {});
         }
 
+        else if (data === 'upload_gpt_go_instruction') {
+            if (!isAdmin(userId)) return;
+
+            userStates[chatId] = { state: 'awaiting_gpt_go_upload' };
+
+            bot.sendMessage(chatId,
+                `📤 *UPLOAD GPT GO*\n\n` +
+                `Send a .txt file now with one credential per line.\n\n` +
+                `Example:\n` +
+                `email:password\n` +
+                `user|pass\n\n` +
+                `Keep each GPT Go account on its own line.\n` +
+                `💡 Uploads auto-broadcast the restock to users.`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
+        else if (data === 'upload_gpt_plus_instruction') {
+            if (!isAdmin(userId)) return;
+
+            userStates[chatId] = { state: 'awaiting_gpt_plus_upload' };
+
+            bot.sendMessage(chatId,
+                `📤 *UPLOAD GPT PLUS*\n\n` +
+                `Send a .txt file now with one credential per line.\n\n` +
+                `Example:\n` +
+                `email:password\n` +
+                `user|pass\n\n` +
+                `Keep each GPT Plus account on its own line.\n` +
+                `💡 Uploads auto-broadcast the restock to users.`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
+        else if (data === 'upload_chatgpt_plus_instruction') {
+            if (!isAdmin(userId)) return;
+
+            userStates[chatId] = { state: 'awaiting_chatgpt_plus_upload' };
+
+            bot.sendMessage(chatId,
+                `📤 *UPLOAD CHATGPT PLUS*\n\n` +
+                `Send a .txt file now with one credential per line.\n\n` +
+                `Example:\n` +
+                `email:password\n` +
+                `user|pass\n\n` +
+                `Keep each ChatGPT Plus account on its own line.\n` +
+                `💡 Uploads auto-broadcast the restock to users.`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
         else if (data === 'upload_alight_instruction') {
             if (!isAdmin(userId)) return;
 
@@ -4099,6 +4539,42 @@ else if (data.startsWith('claim_gift_')) {
 
             bot.answerCallbackQuery(query.id, {
                 text: `📦 GPT via invite available: ${available}`,
+                show_alert: true
+            }).catch(() => {});
+        }
+
+        else if (data === 'check_gpt_go_stock') {
+            if (!isAdmin(userId)) return;
+
+            const gptGoStock = getGptGoStock();
+            const available = gptGoStock.accounts?.length || 0;
+
+            bot.answerCallbackQuery(query.id, {
+                text: `📦 GPT Go available: ${available}`,
+                show_alert: true
+            }).catch(() => {});
+        }
+
+        else if (data === 'check_gpt_plus_stock') {
+            if (!isAdmin(userId)) return;
+
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+
+            bot.answerCallbackQuery(query.id, {
+                text: `📦 GPT Plus available: ${available}`,
+                show_alert: true
+            }).catch(() => {});
+        }
+
+        else if (data === 'check_chatgpt_plus_stock') {
+            if (!isAdmin(userId)) return;
+
+            const chatGptPlusStock = getChatGptPlusStock();
+            const available = chatGptPlusStock.accounts?.length || 0;
+
+            bot.answerCallbackQuery(query.id, {
+                text: `📦 ChatGPT Plus available: ${available}`,
                 show_alert: true
             }).catch(() => {});
         }
@@ -4354,6 +4830,98 @@ else if (data.startsWith('claim_gift_')) {
             ).catch(() => {});
         }
 
+        else if (data === 'buy_gpt_go') {
+            const gptGoStock = getGptGoStock();
+            const available = gptGoStock.accounts?.length || 0;
+            const canBuy = available > 0;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '💳 Pay with Balance', callback_data: 'pay_gpt_go_balance' }],
+                    [{ text: '📱 Pay via QRIS', callback_data: 'pay_gpt_go_qris' }],
+                    [{ text: '💵 Top Up Balance', callback_data: 'topup_balance' }],
+                    [{ text: '💳 Check Balance', callback_data: 'check_balance' }],
+                    [{ text: '🔙 Back', callback_data: 'back_to_main' }]
+                ]
+            };
+
+            const statusLine = available === 0
+                ? '❌ Out of stock! Add more GPT Go first.'
+                : canBuy
+                    ? '✅ Choose payment method below.'
+                    : '⚠️ Not enough balance. Please top up.';
+
+            bot.editMessageText(
+                `🚀 *BUY GPT GO*\n\n` +
+                `💵 Price: Rp ${formatIDR(getGptGoPrice())} (No Warranty)\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `${statusLine}\n\n` +
+                `📌 You can buy 1 up to ${Math.max(1, Math.min(50, available))} accounts depending on stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
+        else if (data === 'buy_gpt_plus') {
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+            const canBuy = available > 0;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: `🛡️ Full Warranty (Rp ${formatIDR(getGptPlusPrice('fw'))})`, callback_data: 'choose_gpt_plus_fw' }],
+                    [{ text: `⚡ No Warranty (Rp ${formatIDR(getGptPlusPrice('nw'))})`, callback_data: 'choose_gpt_plus_nw' }],
+                    [{ text: '💵 Top Up Balance', callback_data: 'topup_balance' }],
+                    [{ text: '🔙 Back', callback_data: 'back_to_main' }]
+                ]
+            };
+
+            const statusLine = available === 0
+                ? '❌ Out of stock! Add more GPT Plus first.'
+                : canBuy
+                    ? '✅ Choose a warranty option below.'
+                    : '⚠️ Not enough balance. Please top up.';
+
+            bot.editMessageText(
+                `✨ *BUY GPT PLUS*\n\n` +
+                `💵 Prices: ${formatGptPlusPriceSummary()}\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `${statusLine}\n\n` +
+                `📌 You can buy 1 up to ${Math.max(1, Math.min(50, available))} accounts depending on stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
+        else if (data === 'buy_chatgpt_plus') {
+            const chatGptPlusStock = getChatGptPlusStock();
+            const available = chatGptPlusStock.accounts?.length || 0;
+            const canBuy = available > 0;
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '💳 Pay with Balance', callback_data: 'pay_chatgpt_plus_balance' }],
+                    [{ text: '📱 Pay via QRIS', callback_data: 'pay_chatgpt_plus_qris' }],
+                    [{ text: '💵 Top Up Balance', callback_data: 'topup_balance' }],
+                    [{ text: '💳 Check Balance', callback_data: 'check_balance' }],
+                    [{ text: '🔙 Back', callback_data: 'back_to_main' }]
+                ]
+            };
+
+            const statusLine = available === 0
+                ? '❌ Out of stock! Add more ChatGPT Plus first.'
+                : canBuy
+                    ? '✅ Choose payment method below.'
+                    : '⚠️ Not enough balance. Please top up.';
+
+            bot.editMessageText(
+                `🌟 *BUY CHATGPT PLUS*\n\n` +
+                `💵 Price: Rp ${formatIDR(getChatGptPlusPrice())} (No Warranty)\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `${statusLine}\n\n` +
+                `📌 You can buy 1 up to ${Math.max(1, Math.min(50, available))} accounts depending on stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
         else if (data === 'buy_gpt_invite') {
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
@@ -4375,7 +4943,7 @@ else if (data.startsWith('claim_gift_')) {
 
             bot.editMessageText(
                 `📩 *BUY GPT VIA INVITE*\n\n` +
-                `💵 Prices: FW Rp ${formatIDR(getGptInvitePrice('fw'))} | NW Rp ${formatIDR(getGptInvitePrice('nw'))}\n` +
+                `💵 Prices: ${formatGptInvitePriceSummary()}\n` +
                 `📦 Accounts available: ${available}\n\n` +
                 `${statusLine}\n\n` +
                 `🛡️ FW = Full warranty provided.\n` +
@@ -4385,8 +4953,15 @@ else if (data.startsWith('claim_gift_')) {
             ).catch(() => {});
         }
 
-        else if (data === 'choose_gpt_invite_fw' || data === 'choose_gpt_invite_nw') {
-            const variant = data === 'choose_gpt_invite_fw' ? 'fw' : 'nw';
+        else if (
+            data === 'choose_gpt_invite_fw' ||
+            data === 'choose_gpt_invite_nw'
+        ) {
+            const variant = normalizeGptInviteVariant(
+                data === 'choose_gpt_invite_fw'
+                    ? 'fw'
+                    : 'nw'
+            );
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const canBuy = available > 0;
@@ -4410,7 +4985,7 @@ else if (data.startsWith('claim_gift_')) {
                     : '⚠️ Not enough balance. Please top up.';
 
             bot.editMessageText(
-                `📩 *GPT VIA INVITE (${variant === 'fw' ? 'FULL WARRANTY' : 'NO WARRANTY'})*\n\n` +
+                `📩 *GPT VIA INVITE (${formatGptInviteVariantLabel(variant).toUpperCase()})*\n\n` +
                 `💵 Price: Rp ${formatIDR(getGptInvitePrice(variant))} (no bulk)\n` +
                 `📦 Accounts available: ${available}\n\n` +
                 `${statusLine}\n\n` +
@@ -4821,7 +5396,7 @@ else if (data.startsWith('claim_gift_')) {
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const maxQuantity = Math.max(1, Math.min(50, available));
-            const variant = (userStates[chatId] || {}).selected_variant === 'fw' ? 'fw' : 'nw';
+            const variant = normalizeGptInviteVariant((userStates[chatId] || {}).selected_variant);
 
             if (available === 0) {
                 bot.answerCallbackQuery(query.id, {
@@ -4855,7 +5430,7 @@ else if (data.startsWith('claim_gift_')) {
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const maxQuantity = Math.max(1, Math.min(50, available));
-            const variant = (userStates[chatId] || {}).selected_variant === 'fw' ? 'fw' : 'nw';
+            const variant = normalizeGptInviteVariant((userStates[chatId] || {}).selected_variant);
 
             if (available === 0) {
                 bot.answerCallbackQuery(query.id, {
@@ -5741,6 +6316,9 @@ else if (data.startsWith('claim_gift_')) {
                 inline_keyboard: [
                     [{ text: `🤖 ${getProductLabel('gpt_basic', 'GPT Basics Accounts')} (Rp ${formatIDR(getGptBasicsPrice())})`, callback_data: 'buy_gpt_basics' }],
                     [{ text: `📩 ${getProductLabel('gpt_invite', 'GPT via Invite')} (${formatGptInvitePriceSummary()})`, callback_data: 'buy_gpt_invite' }],
+                    [{ text: `🚀 ${getProductLabel('gpt_go', 'GPT Go')} (${formatGptGoPriceSummary()})`, callback_data: 'buy_gpt_go' }],
+                    [{ text: `✨ ${getProductLabel('gpt_plus', 'GPT Plus')} (${formatGptPlusPriceSummary()})`, callback_data: 'buy_gpt_plus' }],
+                    [{ text: `🌟 ${getProductLabel('chatgpt_plus', 'ChatGPT Plus')} (${formatChatGptPlusPriceSummary()})`, callback_data: 'buy_chatgpt_plus' }],
                     [{ text: '🔙 Back', callback_data: 'back_to_main' }]
                 ]
             };
@@ -9797,10 +10375,422 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
             delete userStates[chatId];
         }
 
+        else if (state.state === 'awaiting_gpt_go_quantity') {
+            const quantity = parseInt(text.replace(/\D/g, ''));
+            const paymentMethod = state.payment_method || 'balance';
+            const gptGoStock = getGptGoStock();
+            const available = gptGoStock.accounts?.length || 0;
+            const maxQuantity = state.max_quantity || Math.max(1, Math.min(50, available));
+            const selectedQuantity = Math.min(quantity || 0, maxQuantity);
+
+            if (isNaN(quantity) || quantity < 1) {
+                bot.sendMessage(chatId, '❌ Please send a valid number!').catch(() => {});
+                return;
+            }
+
+            if (selectedQuantity !== quantity) {
+                bot.sendMessage(chatId, `⚠️ Maximum you can order now is ${maxQuantity} account(s).`).catch(() => {});
+                return;
+            }
+
+            if (quantity > available) {
+                bot.sendMessage(chatId, `❌ Only ${available} GPT Go account(s) available right now!`).catch(() => {});
+                return;
+            }
+
+            const unitPrice = getGptGoPrice();
+            const totalPrice = quantity * unitPrice;
+            const users = getUsers();
+
+            if (paymentMethod === 'balance') {
+                const balance = getBalance(userId);
+
+                if (balance < totalPrice) {
+                    const shortfall = totalPrice - balance;
+
+                    const keyboard = {
+                        inline_keyboard: [
+                            [{ text: '💵 Top Up via QRIS', callback_data: 'topup_balance' }],
+                            [{ text: '🔙 Back', callback_data: 'buy_gpt_go' }]
+                        ]
+                    };
+
+                    bot.sendMessage(chatId,
+                        `⚠️ Balance not enough.\n\n` +
+                        `Requested: ${quantity} GPT Go account(s)\n` +
+                        `Total needed: Rp ${formatIDR(totalPrice)}\n` +
+                        `Current balance: Rp ${formatIDR(balance)}\n` +
+                        `Shortfall: Rp ${formatIDR(shortfall)}\n\n` +
+                        `Top up with QRIS then try again.`,
+                        { parse_mode: 'Markdown', reply_markup: keyboard }
+                    ).catch(() => {});
+                    return;
+                }
+
+                updateBalance(userId, -totalPrice);
+
+                const orderId = getNextOrderId();
+                const order = {
+                    order_id: orderId,
+                    user_id: userId,
+                    username: users[userId]?.username || msg.from.username || 'unknown',
+                    quantity,
+                    total_quantity: quantity,
+                    original_price: unitPrice,
+                    total_price: totalPrice,
+                    status: 'completed',
+                    payment_method: 'balance',
+                    date: new Date().toISOString(),
+                    completed_at: new Date().toISOString(),
+                    product: 'gpt_go'
+                };
+
+                addOrder(order);
+
+                if (!users[userId]) {
+                    addUser(userId, msg.from);
+                }
+
+                const updatedUsers = getUsers();
+                updatedUsers[userId].total_orders = (updatedUsers[userId].total_orders || 0) + 1;
+                updatedUsers[userId].completed_orders = (updatedUsers[userId].completed_orders || 0) + 1;
+                saveJSON(USERS_FILE, updatedUsers);
+
+                const delivery = await deliverGptGo(userId, orderId, quantity, unitPrice);
+                const newBalance = getBalance(userId);
+
+                if (delivery.success) {
+                    bot.sendMessage(
+                        chatId,
+                        `✅ *GPT GO PURCHASED!*\n\n` +
+                        `📋 Order: #${orderId}\n` +
+                        `🔢 Quantity: ${quantity}\n` +
+                        `💵 Paid: Rp ${formatIDR(totalPrice)}\n` +
+                        `💳 Balance left: Rp ${formatIDR(newBalance)}\n\n` +
+                        `🔑 Credentials sent above.`,
+                        {
+                            parse_mode: 'Markdown',
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [{ text: '🔙 Main Menu', callback_data: 'back_to_main' }]
+                                ]
+                            }
+                        }
+                    ).catch(() => {});
+
+                    bot.sendMessage(ADMIN_TELEGRAM_ID,
+                        `🆕 *GPT GO SALE*\n\n` +
+                        `User: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')} (${userId})\n` +
+                        `Order: #${orderId}\n` +
+                        `Qty: ${quantity}\n` +
+                        `Total: Rp ${formatIDR(totalPrice)}\n` +
+                        `Remaining GPT Go: ${(getGptGoStock().accounts || []).length}`,
+                        { parse_mode: 'Markdown' }
+                    ).catch(() => {});
+                } else {
+                    bot.sendMessage(chatId, delivery.message || '❌ Failed to deliver accounts.').catch(() => {});
+                    updateBalance(userId, totalPrice);
+                }
+            } else {
+                const orderId = getNextOrderId();
+
+                const order = {
+                    order_id: orderId,
+                    user_id: userId,
+                    username: users[userId]?.username || msg.from.username || 'unknown',
+                    quantity: quantity,
+                    total_quantity: quantity,
+                    original_price: unitPrice,
+                    total_price: totalPrice,
+                    status: 'pending',
+                    payment_method: 'qris',
+                    date: new Date().toISOString(),
+                    product: 'gpt_go'
+                };
+
+                addOrder(order);
+
+                const updatedUsers = getUsers();
+
+                if (!updatedUsers[userId]) {
+                    addUser(userId, msg.from);
+                }
+
+                const orderMessage =
+                    `🧾 *ORDER SUMMARY*\n\n` +
+                    `🆔 Order ID: #${orderId}\n` +
+                    `📌 Product: GPT Go (No Warranty)\n` +
+                    `🔢 Quantity: ${quantity}\n` +
+                    `💰 Total: Rp ${formatIDR(totalPrice)}\n` +
+                    `💳 Payment: QRIS/Gopay\n` +
+                    `📦 Status: Awaiting Payment\n`;
+
+                const keyboard = { inline_keyboard: [] };
+
+                const gopay = getQRIS();
+                if (gopay.file_id) {
+                    bot.sendPhoto(chatId, gopay.file_id, {
+                        caption:
+                            `📱 *PAYMENT METHOD - GOPAY/QRIS*\n\n` +
+                            `Scan this QR code to pay\n` +
+                            `💰 Amount: *Rp ${formatIDR(totalPrice)}*\n\n` +
+                            `After payment, send screenshot with:\n` +
+                            `Caption: #${orderId}\n\n` +
+                            `⏰ Order expires in ${ORDER_EXPIRY_MINUTES} minutes`,
+                        parse_mode: 'Markdown',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: '📱 DM Admin @itsmeaab', url: 'https://t.me/itsmeaab' }]
+                            ]
+                        }
+                    }).catch(() => {});
+                } else {
+                    bot.sendMessage(chatId,
+                        `📱 *PAYMENT INSTRUCTIONS*\n\n` +
+                        `💰 Amount: *Rp ${formatIDR(totalPrice)}*\n\n` +
+                        `Contact admin for payment details:`,
+                        {
+                            parse_mode: 'Markdown',
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [{ text: '📱 DM Admin @itsmeaab', url: 'https://t.me/itsmeaab' }]
+                                ]
+                            }
+                        }
+                    ).catch(() => {});
+                }
+
+                bot.sendMessage(chatId, orderMessage, {
+                    parse_mode: 'Markdown',
+                    reply_markup: keyboard
+                }).catch(() => {});
+
+                bot.sendMessage(ADMIN_TELEGRAM_ID,
+                    `📝 *NEW GPT GO ORDER*\n\n` +
+                    `Order ID: #${orderId}\n` +
+                    `Customer: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')}\n` +
+                    `User ID: ${userId}\n` +
+                    `Quantity: ${quantity} account(s)\n` +
+                    `💰 Total: Rp ${formatIDR(totalPrice)}\n` +
+                    `Status: Awaiting Payment\n\n` +
+                    `💡 Waiting for payment proof...`,
+                    { parse_mode: 'Markdown' }
+                ).catch(() => {});
+            }
+
+            delete userStates[chatId];
+        }
+
+        else if (state.state === 'awaiting_chatgpt_plus_quantity') {
+            const quantity = parseInt(text.replace(/\D/g, ''));
+            const paymentMethod = state.payment_method || 'balance';
+            const chatGptPlusStock = getChatGptPlusStock();
+            const available = chatGptPlusStock.accounts?.length || 0;
+            const maxQuantity = state.max_quantity || Math.max(1, Math.min(50, available));
+            const selectedQuantity = Math.min(quantity || 0, maxQuantity);
+
+            if (isNaN(quantity) || quantity < 1) {
+                bot.sendMessage(chatId, '❌ Please send a valid number!').catch(() => {});
+                return;
+            }
+
+            if (selectedQuantity !== quantity) {
+                bot.sendMessage(chatId, `⚠️ Maximum you can order now is ${maxQuantity} account(s).`).catch(() => {});
+                return;
+            }
+
+            if (quantity > available) {
+                bot.sendMessage(chatId, `❌ Only ${available} ChatGPT Plus account(s) available right now!`).catch(() => {});
+                return;
+            }
+
+            const unitPrice = getChatGptPlusPrice();
+            const totalPrice = quantity * unitPrice;
+            const users = getUsers();
+
+            if (paymentMethod === 'balance') {
+                const balance = getBalance(userId);
+
+                if (balance < totalPrice) {
+                    const shortfall = totalPrice - balance;
+
+                    const keyboard = {
+                        inline_keyboard: [
+                            [{ text: '💵 Top Up via QRIS', callback_data: 'topup_balance' }],
+                            [{ text: '🔙 Back', callback_data: 'buy_chatgpt_plus' }]
+                        ]
+                    };
+
+                    bot.sendMessage(chatId,
+                        `⚠️ Balance not enough.\n\n` +
+                        `Requested: ${quantity} ChatGPT Plus account(s)\n` +
+                        `Total needed: Rp ${formatIDR(totalPrice)}\n` +
+                        `Current balance: Rp ${formatIDR(balance)}\n` +
+                        `Shortfall: Rp ${formatIDR(shortfall)}\n\n` +
+                        `Top up with QRIS then try again.`,
+                        { parse_mode: 'Markdown', reply_markup: keyboard }
+                    ).catch(() => {});
+                    return;
+                }
+
+                updateBalance(userId, -totalPrice);
+
+                const orderId = getNextOrderId();
+                const order = {
+                    order_id: orderId,
+                    user_id: userId,
+                    username: users[userId]?.username || msg.from.username || 'unknown',
+                    quantity,
+                    total_quantity: quantity,
+                    original_price: unitPrice,
+                    total_price: totalPrice,
+                    status: 'completed',
+                    payment_method: 'balance',
+                    date: new Date().toISOString(),
+                    completed_at: new Date().toISOString(),
+                    product: 'chatgpt_plus'
+                };
+
+                addOrder(order);
+
+                if (!users[userId]) {
+                    addUser(userId, msg.from);
+                }
+
+                const updatedUsers = getUsers();
+                updatedUsers[userId].total_orders = (updatedUsers[userId].total_orders || 0) + 1;
+                updatedUsers[userId].completed_orders = (updatedUsers[userId].completed_orders || 0) + 1;
+                saveJSON(USERS_FILE, updatedUsers);
+
+                const delivery = await deliverChatGptPlus(userId, orderId, quantity, unitPrice);
+                const newBalance = getBalance(userId);
+
+                if (delivery.success) {
+                    bot.sendMessage(
+                        chatId,
+                        `✅ *CHATGPT PLUS PURCHASED!*\n\n` +
+                        `📋 Order: #${orderId}\n` +
+                        `🔢 Quantity: ${quantity}\n` +
+                        `💵 Paid: Rp ${formatIDR(totalPrice)}\n` +
+                        `💳 Balance left: Rp ${formatIDR(newBalance)}\n\n` +
+                        `🔑 Credentials sent above.`,
+                        {
+                            parse_mode: 'Markdown',
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [{ text: '🔙 Main Menu', callback_data: 'back_to_main' }]
+                                ]
+                            }
+                        }
+                    ).catch(() => {});
+
+                    bot.sendMessage(ADMIN_TELEGRAM_ID,
+                        `🆕 *CHATGPT PLUS SALE*\n\n` +
+                        `User: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')} (${userId})\n` +
+                        `Order: #${orderId}\n` +
+                        `Qty: ${quantity}\n` +
+                        `Total: Rp ${formatIDR(totalPrice)}\n` +
+                        `Remaining ChatGPT Plus: ${(getChatGptPlusStock().accounts || []).length}`,
+                        { parse_mode: 'Markdown' }
+                    ).catch(() => {});
+                } else {
+                    bot.sendMessage(chatId, delivery.message || '❌ Failed to deliver accounts.').catch(() => {});
+                    updateBalance(userId, totalPrice);
+                }
+            } else {
+                const orderId = getNextOrderId();
+
+                const order = {
+                    order_id: orderId,
+                    user_id: userId,
+                    username: users[userId]?.username || msg.from.username || 'unknown',
+                    quantity: quantity,
+                    total_quantity: quantity,
+                    original_price: unitPrice,
+                    total_price: totalPrice,
+                    status: 'pending',
+                    payment_method: 'qris',
+                    date: new Date().toISOString(),
+                    product: 'chatgpt_plus'
+                };
+
+                addOrder(order);
+
+                const updatedUsers = getUsers();
+
+                if (!updatedUsers[userId]) {
+                    addUser(userId, msg.from);
+                }
+
+                const orderMessage =
+                    `🧾 *ORDER SUMMARY*\n\n` +
+                    `🆔 Order ID: #${orderId}\n` +
+                    `📌 Product: ChatGPT Plus (No Warranty)\n` +
+                    `🔢 Quantity: ${quantity}\n` +
+                    `💰 Total: Rp ${formatIDR(totalPrice)}\n` +
+                    `💳 Payment: QRIS/Gopay\n` +
+                    `📦 Status: Awaiting Payment\n`;
+
+                const keyboard = { inline_keyboard: [] };
+
+                const gopay = getQRIS();
+                if (gopay.file_id) {
+                    bot.sendPhoto(chatId, gopay.file_id, {
+                        caption:
+                            `📱 *PAYMENT METHOD - GOPAY/QRIS*\n\n` +
+                            `Scan this QR code to pay\n` +
+                            `💰 Amount: *Rp ${formatIDR(totalPrice)}*\n\n` +
+                            `After payment, send screenshot with:\n` +
+                            `Caption: #${orderId}\n\n` +
+                            `⏰ Order expires in ${ORDER_EXPIRY_MINUTES} minutes`,
+                        parse_mode: 'Markdown',
+                        reply_markup: {
+                            inline_keyboard: [
+                                [{ text: '📱 DM Admin @itsmeaab', url: 'https://t.me/itsmeaab' }]
+                            ]
+                        }
+                    }).catch(() => {});
+                } else {
+                    bot.sendMessage(chatId,
+                        `📱 *PAYMENT INSTRUCTIONS*\n\n` +
+                        `💰 Amount: *Rp ${formatIDR(totalPrice)}*\n\n` +
+                        `Contact admin for payment details:`,
+                        {
+                            parse_mode: 'Markdown',
+                            reply_markup: {
+                                inline_keyboard: [
+                                    [{ text: '📱 DM Admin @itsmeaab', url: 'https://t.me/itsmeaab' }]
+                                ]
+                            }
+                        }
+                    ).catch(() => {});
+                }
+
+                bot.sendMessage(chatId, orderMessage, {
+                    parse_mode: 'Markdown',
+                    reply_markup: keyboard
+                }).catch(() => {});
+
+                bot.sendMessage(ADMIN_TELEGRAM_ID,
+                    `📝 *NEW CHATGPT PLUS ORDER*\n\n` +
+                    `Order ID: #${orderId}\n` +
+                    `Customer: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')}\n` +
+                    `User ID: ${userId}\n` +
+                    `Quantity: ${quantity} account(s)\n` +
+                    `💰 Total: Rp ${formatIDR(totalPrice)}\n` +
+                    `Status: Awaiting Payment\n\n` +
+                    `💡 Waiting for payment proof...`,
+                    { parse_mode: 'Markdown' }
+                ).catch(() => {});
+            }
+
+            delete userStates[chatId];
+        }
+
         else if (state.state === 'awaiting_gpt_invite_quantity') {
             const quantity = parseInt(text.replace(/\D/g, ''));
             const paymentMethod = state.payment_method || 'balance';
-            const variant = state.variant === 'fw' ? 'fw' : 'nw';
+            const variant = normalizeGptInviteVariant(state.variant);
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const maxQuantity = state.max_quantity || Math.max(1, Math.min(50, available));
@@ -9888,7 +10878,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                         chatId,
                         `✅ *GPT VIA INVITE PURCHASED!*\n\n` +
                         `📋 Order: #${orderId}\n` +
-                        `🛡️ Type: ${variant === 'fw' ? 'Full Warranty' : 'No Warranty'}\n` +
+                    `🛡️ Type: ${formatGptInviteVariantLabel(variant)}\n` +
                         `🔢 Quantity: ${quantity}\n` +
                         `💵 Paid: Rp ${formatIDR(totalPrice)}\n` +
                         `💳 Balance left: Rp ${formatIDR(newBalance)}\n\n` +
@@ -9930,7 +10920,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                 `📩 *PAYMENT NEEDED*\n\n` +
                 `📋 Order ID: #${orderId}\n` +
                 `Product: GPT via invite\n` +
-                `Type: ${variant === 'fw' ? 'Full Warranty' : 'No Warranty'}\n` +
+                `Type: ${formatGptInviteVariantLabel(variant)}\n` +
                 `Quantity: ${quantity}\n` +
                 `Total: Rp ${formatIDR(totalPrice)}\n\n` +
                 `📱 Scan QRIS then send screenshot with caption: #${orderId}\n` +
@@ -9964,7 +10954,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                 `Order ID: #${orderId}\n` +
                 `Customer: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')}\n` +
                 `User ID: ${userId}\n` +
-                `Type: ${variant === 'fw' ? 'Full Warranty' : 'No Warranty'}\n` +
+                `Type: ${formatGptInviteVariantLabel(variant)}\n` +
                 `Quantity: ${quantity}\n` +
                 `Total: Rp ${formatIDR(totalPrice)}\n` +
                 `Status: Awaiting Payment`,
