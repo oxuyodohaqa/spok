@@ -525,12 +525,36 @@ function getGptInvitePrices() {
 
 function getGptInvitePrice(variant = 'nw') {
     const prices = getGptInvitePrices();
-    return variant === 'fw' ? prices.fw : prices.nw;
+    switch (variant) {
+        case 'fw':
+            return prices.fw;
+        default:
+            return prices.nw;
+    }
 }
 
 function formatGptInvitePriceSummary() {
     const prices = getGptInvitePrices();
-    return `FW Rp ${formatIDR(prices.fw)} | NW Rp ${formatIDR(prices.nw)}`;
+    return [
+        `FW Rp ${formatIDR(prices.fw)}`,
+        `NW Rp ${formatIDR(prices.nw)}`
+    ].join(' | ');
+}
+
+function formatGptInviteVariantLabel(variant = 'nw') {
+    switch (variant) {
+        case 'fw':
+            return 'Full Warranty';
+        case 'nw':
+            return 'No Warranty';
+        default:
+            return 'No Warranty';
+    }
+}
+
+function normalizeGptInviteVariant(variant = 'nw') {
+    const allowed = ['fw', 'nw'];
+    return allowed.includes(variant) ? variant : 'nw';
 }
 
 function getAlightMotionPrice() {
@@ -4375,7 +4399,7 @@ else if (data.startsWith('claim_gift_')) {
 
             bot.editMessageText(
                 `📩 *BUY GPT VIA INVITE*\n\n` +
-                `💵 Prices: FW Rp ${formatIDR(getGptInvitePrice('fw'))} | NW Rp ${formatIDR(getGptInvitePrice('nw'))}\n` +
+                `💵 Prices: ${formatGptInvitePriceSummary()}\n` +
                 `📦 Accounts available: ${available}\n\n` +
                 `${statusLine}\n\n` +
                 `🛡️ FW = Full warranty provided.\n` +
@@ -4385,8 +4409,15 @@ else if (data.startsWith('claim_gift_')) {
             ).catch(() => {});
         }
 
-        else if (data === 'choose_gpt_invite_fw' || data === 'choose_gpt_invite_nw') {
-            const variant = data === 'choose_gpt_invite_fw' ? 'fw' : 'nw';
+        else if (
+            data === 'choose_gpt_invite_fw' ||
+            data === 'choose_gpt_invite_nw'
+        ) {
+            const variant = normalizeGptInviteVariant(
+                data === 'choose_gpt_invite_fw'
+                    ? 'fw'
+                    : 'nw'
+            );
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const canBuy = available > 0;
@@ -4410,7 +4441,7 @@ else if (data.startsWith('claim_gift_')) {
                     : '⚠️ Not enough balance. Please top up.';
 
             bot.editMessageText(
-                `📩 *GPT VIA INVITE (${variant === 'fw' ? 'FULL WARRANTY' : 'NO WARRANTY'})*\n\n` +
+                `📩 *GPT VIA INVITE (${formatGptInviteVariantLabel(variant).toUpperCase()})*\n\n` +
                 `💵 Price: Rp ${formatIDR(getGptInvitePrice(variant))} (no bulk)\n` +
                 `📦 Accounts available: ${available}\n\n` +
                 `${statusLine}\n\n` +
@@ -4821,7 +4852,7 @@ else if (data.startsWith('claim_gift_')) {
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const maxQuantity = Math.max(1, Math.min(50, available));
-            const variant = (userStates[chatId] || {}).selected_variant === 'fw' ? 'fw' : 'nw';
+            const variant = normalizeGptInviteVariant((userStates[chatId] || {}).selected_variant);
 
             if (available === 0) {
                 bot.answerCallbackQuery(query.id, {
@@ -4855,7 +4886,7 @@ else if (data.startsWith('claim_gift_')) {
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const maxQuantity = Math.max(1, Math.min(50, available));
-            const variant = (userStates[chatId] || {}).selected_variant === 'fw' ? 'fw' : 'nw';
+            const variant = normalizeGptInviteVariant((userStates[chatId] || {}).selected_variant);
 
             if (available === 0) {
                 bot.answerCallbackQuery(query.id, {
@@ -9800,7 +9831,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
         else if (state.state === 'awaiting_gpt_invite_quantity') {
             const quantity = parseInt(text.replace(/\D/g, ''));
             const paymentMethod = state.payment_method || 'balance';
-            const variant = state.variant === 'fw' ? 'fw' : 'nw';
+            const variant = normalizeGptInviteVariant(state.variant);
             const gptInviteStock = getGptInviteStock();
             const available = gptInviteStock.accounts?.length || 0;
             const maxQuantity = state.max_quantity || Math.max(1, Math.min(50, available));
@@ -9888,7 +9919,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                         chatId,
                         `✅ *GPT VIA INVITE PURCHASED!*\n\n` +
                         `📋 Order: #${orderId}\n` +
-                        `🛡️ Type: ${variant === 'fw' ? 'Full Warranty' : 'No Warranty'}\n` +
+                    `🛡️ Type: ${formatGptInviteVariantLabel(variant)}\n` +
                         `🔢 Quantity: ${quantity}\n` +
                         `💵 Paid: Rp ${formatIDR(totalPrice)}\n` +
                         `💳 Balance left: Rp ${formatIDR(newBalance)}\n\n` +
@@ -9930,7 +9961,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                 `📩 *PAYMENT NEEDED*\n\n` +
                 `📋 Order ID: #${orderId}\n` +
                 `Product: GPT via invite\n` +
-                `Type: ${variant === 'fw' ? 'Full Warranty' : 'No Warranty'}\n` +
+                `Type: ${formatGptInviteVariantLabel(variant)}\n` +
                 `Quantity: ${quantity}\n` +
                 `Total: Rp ${formatIDR(totalPrice)}\n\n` +
                 `📱 Scan QRIS then send screenshot with caption: #${orderId}\n` +
@@ -9964,7 +9995,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                 `Order ID: #${orderId}\n` +
                 `Customer: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')}\n` +
                 `User ID: ${userId}\n` +
-                `Type: ${variant === 'fw' ? 'Full Warranty' : 'No Warranty'}\n` +
+                `Type: ${formatGptInviteVariantLabel(variant)}\n` +
                 `Quantity: ${quantity}\n` +
                 `Total: Rp ${formatIDR(totalPrice)}\n` +
                 `Status: Awaiting Payment`,
