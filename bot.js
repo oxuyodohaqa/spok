@@ -32,6 +32,7 @@ const GPT_BASICS_PRICE_IDR = 50;
 const GPT_INVITE_FW_PRICE_IDR = 15_000; // Full Warranty
 const GPT_INVITE_NW_PRICE_IDR = 6_000;  // No Warranty
 const GPT_GO_PRICE_IDR = 5_000;         // Go plan (No Warranty only)
+const GPT_INVITE_GO_PRICE_IDR = GPT_GO_PRICE_IDR; // Legacy alias for backward compatibility
 const GPT_PLUS_FW_PRICE_IDR = 40_000;   // Plus plan (Full Warranty)
 const GPT_PLUS_NW_PRICE_IDR = 10_000;   // Plus plan (No Warranty)
 const CHATGPT_PLUS_PRICE_IDR = 80_000;  // ChatGPT Plus (single price)
@@ -612,8 +613,12 @@ function normalizeGptInviteVariant(variant = 'nw') {
 
 function getGptGoPrice() {
     const settings = getProductSettings();
-    const price = parseInt(settings?.gpt_go?.price);
-    return !isNaN(price) && price > 0 ? price : GPT_GO_PRICE_IDR;
+    const price = parseInt(settings?.gpt_go?.price ?? settings?.gpt_go?.go_price);
+    const legacy = parseInt(settings?.gpt_invite?.go_price);
+
+    return !isNaN(price) && price > 0
+        ? price
+        : (!isNaN(legacy) && legacy > 0 ? legacy : GPT_GO_PRICE_IDR);
 }
 
 function formatGptGoPriceSummary() {
