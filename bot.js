@@ -198,6 +198,27 @@ function saveJSON(filename, data) {
     }
 }
 
+function buildAdminMainKeyboard() {
+    return {
+        inline_keyboard: [
+            [{ text: '📊 Stats', callback_data: 'admin_stats' }, { text: '📝 Orders', callback_data: 'admin_orders' }],
+            [{ text: '👥 Users', callback_data: 'admin_users' }, { text: '💰 Revenue', callback_data: 'admin_revenue' }],
+            [{ text: '📈 Analytics', callback_data: 'admin_analytics' }, { text: '📦 Stock', callback_data: 'admin_stock' }],
+            [{ text: '🔑 Accounts', callback_data: 'admin_accounts' }, { text: '🤖 GPT Basics', callback_data: 'admin_gpt_basics' }],
+            [{ text: '📩 GPT via Invite', callback_data: 'admin_gpt_invite' }, { text: '🎬 Alight Motion', callback_data: 'admin_alight_motion' }],
+            [{ text: '🚀 GPT Go', callback_data: 'admin_gpt_go' }, { text: '✨ GPT Plus', callback_data: 'admin_gpt_plus' }],
+            [{ text: '🧠 Perplexity AI', callback_data: 'admin_perplexity' }, { text: '💵 Pricing', callback_data: 'admin_pricing' }],
+            [{ text: '🏷️ Product Labels & Prices', callback_data: 'admin_product_settings' }],
+            [{ text: '🎟️ Coupons', callback_data: 'admin_coupons' }, { text: '📋 Pending Top-ups', callback_data: 'admin_pending_topups' }],
+            [{ text: '📱 GoPay', callback_data: 'admin_qris' }, { text: '💰 Add Balance', callback_data: 'admin_add_balance' }],
+            [{ text: '🎁 Create Gift', callback_data: 'admin_create_gift' }, { text: '📋 View Gifts', callback_data: 'admin_view_gifts' }],
+            [{ text: '🎁 Bonuses', callback_data: 'admin_bonuses' }],
+            [{ text: '📥 Get Test Links', callback_data: 'admin_get_links' }],
+            [{ text: '📢 Broadcast', callback_data: 'admin_broadcast' }]
+        ]
+    };
+}
+
 function mergeWithDefaults(defaults, overrides) {
     if (Array.isArray(defaults)) {
         return Array.isArray(overrides) ? overrides.slice() : defaults.slice();
@@ -294,6 +315,11 @@ function getGptPlusStock() {
 
 function updateGptPlusStock(accounts = []) {
     saveJSON(GPT_PLUS_FILE, { accounts });
+}
+
+// Alias for backward compatibility; ChatGPT Plus uses the same stock as GPT Plus
+function getChatGptPlusStock() {
+    return getGptPlusStock();
 }
 
 function getAlightMotionStock() {
@@ -2236,60 +2262,9 @@ bot.onText(/\/start/, (msg) => {
     
     try {
         const isNewUser = addUser(userId, user);
-        
+
         if (isAdmin(userId)) {
-            const keyboard = {
-                inline_keyboard: [
-                    [
-                        { text: '📊 Statistics', callback_data: 'admin_stats' },
-                        { text: '📝 Orders', callback_data: 'admin_orders' }
-                    ],
-                    [
-                        { text: '👥 Users', callback_data: 'admin_users' },
-                        { text: '💰 Revenue', callback_data: 'admin_revenue' }
-                    ],
-                    [
-                        { text: '📈 Analytics', callback_data: 'admin_analytics' },
-                        { text: '📦 Stock', callback_data: 'admin_stock' }
-                    ],
-                    [
-                        { text: '🔑 Accounts', callback_data: 'admin_accounts' },
-                        { text: '🤖 GPT Basics', callback_data: 'admin_gpt_basics' }
-                    ],
-                    [
-                        { text: '📩 GPT Business via Invite', callback_data: 'admin_gpt_invite' },
-                        { text: '🎬 Alight Motion', callback_data: 'admin_alight_motion' }
-                    ],
-                    [
-                        { text: '🚀 GPT Go', callback_data: 'admin_gpt_go' },
-                        { text: '✨ GPT Plus', callback_data: 'admin_gpt_plus' }
-                    ],
-                    [
-                        { text: '🧠 Perplexity AI', callback_data: 'admin_perplexity' },
-                        { text: '💵 Pricing', callback_data: 'admin_pricing' }
-                    ],
-                    [
-                        { text: '🏷️ Product Labels & Prices', callback_data: 'admin_product_settings' }
-                    ],
-                    [
-                        { text: '🎟️ Coupons', callback_data: 'admin_coupons' },
-                        { text: '📋 Pending Top-ups', callback_data: 'admin_pending_topups' }
-                    ],
-                    [
-                        { text: '📱 GoPay', callback_data: 'admin_qris' },
-                        { text: '💰 Add Balance', callback_data: 'admin_add_balance' }
-                    ],
-                    [
-                        { text: '💰 Add Balance', callback_data: 'admin_add_balance' },
-                        { text: '🎁 Create Gift', callback_data: 'admin_create_gift' }
-                    ],
-                    [{ text: '📋 View Gifts', callback_data: 'admin_view_gifts' }],
-                    [{ text: '📥 Get Test Links', callback_data: 'admin_get_links' }],
-                    [
-                        { text: '📢 Broadcast', callback_data: 'admin_broadcast' }
-                    ]
-                ]
-            };
+            const keyboard = buildAdminMainKeyboard();
 
             const users = getUsers();
             const orders = getOrders();
@@ -6394,23 +6369,7 @@ else if (data.startsWith('claim_gift_')) {
         else if (data === 'back_to_admin_main') {
             if (!isAdmin(userId)) return;
 
-            const keyboard = {
-                inline_keyboard: [
-                    [{ text: '📊 Stats', callback_data: 'admin_stats' }, { text: '📝 Orders', callback_data: 'admin_orders' }],
-                    [{ text: '👥 Users', callback_data: 'admin_users' }, { text: '💰 Revenue', callback_data: 'admin_revenue' }],
-                    [{ text: '📈 Analytics', callback_data: 'admin_analytics' }, { text: '📦 Stock', callback_data: 'admin_stock' }],
-                    [{ text: '🔑 Accounts', callback_data: 'admin_accounts' }, { text: '🤖 GPT Basics', callback_data: 'admin_gpt_basics' }],
-                    [{ text: '📩 GPT via Invite', callback_data: 'admin_gpt_invite' }, { text: '🎬 Alight Motion', callback_data: 'admin_alight_motion' }],
-                    [{ text: '🧠 Perplexity AI', callback_data: 'admin_perplexity' }, { text: '💵 Pricing', callback_data: 'admin_pricing' }],
-                    [{ text: '🏷️ Product Labels & Prices', callback_data: 'admin_product_settings' }],
-                    [{ text: '🎟️ Coupons', callback_data: 'admin_coupons' }, { text: '📋 Pending Top-ups', callback_data: 'admin_pending_topups' }],
-                    [{ text: '📱 GoPay', callback_data: 'admin_qris' }, { text: '💰 Add Balance', callback_data: 'admin_add_balance' }],
-                    [{ text: '🎁 Create Gift', callback_data: 'admin_create_gift' }, { text: '📋 View Gifts', callback_data: 'admin_view_gifts' }],
-                    [{ text: '🎁 Bonuses', callback_data: 'admin_bonuses' }],
-                    [{ text: '📥 Get Test Links', callback_data: 'admin_get_links' }],
-                    [{ text: '📢 Broadcast', callback_data: 'admin_broadcast' }]
-                ]
-            };
+            const keyboard = buildAdminMainKeyboard();
 
             bot.editMessageText(
                 `🔐 *ADMIN PANEL*\n\nWelcome back!`,
