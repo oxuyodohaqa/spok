@@ -10723,7 +10723,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                     total_quantity: quantity,
                     original_price: unitPrice,
                     total_price: totalPrice,
-                    status: 'pending',
+                    status: 'awaiting_payment',
                     payment_method: 'qris',
                     date: new Date().toISOString(),
                     product: 'gpt_go'
