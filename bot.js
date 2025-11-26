@@ -848,6 +848,16 @@ function isGptInviteOrder(order) {
     return order.product === 'gpt_invite' || order.type === 'gpt_invite';
 }
 
+function isGptGoOrder(order) {
+    if (!order) return false;
+    return order.product === 'gpt_go' || order.type === 'gpt_go';
+}
+
+function isGptPlusOrder(order) {
+    if (!order) return false;
+    return order.product === 'gpt_plus' || order.type === 'gpt_plus' || order.product === 'chatgpt_plus';
+}
+
 function isAlightMotionOrder(order) {
     if (!order) return false;
     return order.product === 'alight_motion' || order.type === 'alight_motion';
@@ -859,7 +869,13 @@ function isPerplexityOrder(order) {
 }
 
 function isCredentialOrder(order) {
-    return isAccountOrder(order) || isGptBasicsOrder(order) || isGptInviteOrder(order) || isAlightMotionOrder(order) || isPerplexityOrder(order);
+    return isAccountOrder(order)
+        || isGptBasicsOrder(order)
+        || isGptInviteOrder(order)
+        || isGptGoOrder(order)
+        || isGptPlusOrder(order)
+        || isAlightMotionOrder(order)
+        || isPerplexityOrder(order);
 }
 
 function getOrderTotalQuantity(order) {
@@ -890,6 +906,14 @@ function formatOrderQuantitySummary(order) {
     if (isGptInviteOrder(order)) {
         const total = getOrderTotalQuantity(order);
         return `${total} GPT Business via Invite account${total > 1 ? 's' : ''}`;
+    }
+    if (isGptGoOrder(order)) {
+        const total = getOrderTotalQuantity(order);
+        return `${total} GPT Go account${total > 1 ? 's' : ''}`;
+    }
+    if (isGptPlusOrder(order)) {
+        const total = getOrderTotalQuantity(order);
+        return `${total} GPT Plus account${total > 1 ? 's' : ''}`;
     }
     if (isAlightMotionOrder(order)) {
         const total = getOrderTotalQuantity(order);
@@ -1739,6 +1763,32 @@ function broadcastGptInviteRestock(addedCount, totalCount) {
         `📨 Total Stock: *${totalCount}* ready to claim`,
         '',
         `💵 Price: Rp ${formatIDR(getGptInvitePrice())} (no bulk)`,
+        '⚡ Order now before stock runs out!'
+    ].join('\n');
+
+    return broadcastToAll(message, { parse_mode: 'Markdown' });
+}
+
+function broadcastGptGoRestock(addedCount, totalCount) {
+    const message = [
+        '🚀 *GPT GO RESTOCKED!*',
+        `📤 Added: *${addedCount}* account${addedCount > 1 ? 's' : ''}`,
+        `🧠 Total Stock: *${totalCount}* ready to claim`,
+        '',
+        `💵 Price: ${formatGptGoPriceSummary()}`,
+        '⚡ Order now before stock runs out!'
+    ].join('\n');
+
+    return broadcastToAll(message, { parse_mode: 'Markdown' });
+}
+
+function broadcastGptPlusRestock(addedCount, totalCount) {
+    const message = [
+        '✨ *GPT PLUS RESTOCKED!*',
+        `📤 Added: *${addedCount}* account${addedCount > 1 ? 's' : ''}`,
+        `💫 Total Stock: *${totalCount}* ready to claim`,
+        '',
+        `💵 Prices: ${formatGptPlusPriceSummary()}`,
         '⚡ Order now before stock runs out!'
     ].join('\n');
 
@@ -2740,6 +2790,8 @@ bot.on('document', (msg) => {
                                 const merged = [...(gptGoStock.accounts || []), ...lines];
                                 updateGptGoStock(merged);
 
+                                broadcastGptGoRestock(lines.length, merged.length).catch(() => {});
+
                                 bot.editMessageText(
                                     `✅ *GPT GO UPLOADED!*\n\n` +
                                     `📤 Added: ${lines.length} accounts\n` +
@@ -2758,6 +2810,8 @@ bot.on('document', (msg) => {
                                 const gptPlusStock = getGptPlusStock();
                                 const merged = [...(gptPlusStock.accounts || []), ...lines];
                                 updateGptPlusStock(merged);
+
+                                broadcastGptPlusRestock(lines.length, merged.length).catch(() => {});
 
                                 bot.editMessageText(
                                     `✅ *GPT PLUS UPLOADED!*\n\n` +
@@ -3035,9 +3089,11 @@ bot.on('callback_query', async (query) => {
             const isAccountOrder = order?.product === 'account' || order?.type === 'account';
             const isGptOrder = isGptBasicsOrder(order);
             const isGptInvite = isGptInviteOrder(order);
+            const isGptGo = isGptGoOrder(order);
+            const isGptPlus = isGptPlusOrder(order);
             const isAlight = isAlightMotionOrder(order);
             const isPerplexity = isPerplexityOrder(order);
-            const isCredential = isAccountOrder || isGptOrder || isGptInvite || isAlight || isPerplexity;
+            const isCredential = isAccountOrder || isGptOrder || isGptInvite || isGptGo || isGptPlus || isAlight || isPerplexity;
 
             if (!order) {
                 bot.answerCallbackQuery(query.id, {
@@ -3053,7 +3109,23 @@ bot.on('callback_query', async (query) => {
             bot.editMessageCaption(
                 `⏳ *PROCESSING PAYMENT...*\n\n` +
                 `Order #${orderId}\n` +
-                `Delivering ${deliveryQuantity} ${isAccountOrder ? 'account(s)' : isGptOrder ? 'GPT Basics account(s)' : isGptInvite ? 'GPT Business via Invite account(s)' : isAlight ? 'Alight Motion account(s)' : isPerplexity ? 'Perplexity link(s)' : 'links'}${bonusNote}...`,
+                `Delivering ${deliveryQuantity} ${
+                    isAccountOrder
+                        ? 'account(s)'
+                        : isGptOrder
+                            ? 'GPT Basics account(s)'
+                            : isGptInvite
+                                ? 'GPT Business via Invite account(s)'
+                                : isGptGo
+                                    ? 'GPT Go account(s)'
+                                    : isGptPlus
+                                        ? 'GPT Plus account(s)'
+                                        : isAlight
+                                            ? 'Alight Motion account(s)'
+                                            : isPerplexity
+                                                ? 'Perplexity link(s)'
+                                                : 'links'
+                }${bonusNote}...`,
                 {
                     chat_id: chatId,
                     message_id: messageId,
@@ -3071,6 +3143,12 @@ bot.on('callback_query', async (query) => {
                 delivered = result.success;
             } else if (isGptInvite) {
                 const result = await deliverGptInvite(order.user_id, orderId, order.quantity);
+                delivered = result.success;
+            } else if (isGptGo) {
+                const result = await deliverGptGo(order.user_id, orderId, order.quantity);
+                delivered = result.success;
+            } else if (isGptPlus) {
+                const result = await deliverGptPlus(order.user_id, orderId, order.quantity, order.variant || 'nw');
                 delivered = result.success;
             } else if (isAlight) {
                 const result = await deliverAlightMotion(order.user_id, orderId, order.quantity);
@@ -3103,7 +3181,23 @@ bot.on('callback_query', async (query) => {
                     `👤 @${escapeMarkdown(order.username)}\n` +
                     `📦 ${formatOrderQuantitySummary(order)}\n` +
                     `💰 Rp ${formatIDR(order.total_price)}\n\n` +
-                    `✅ ${isAccountOrder ? 'Account(s) sent!' : isGptOrder ? 'GPT Basics sent!' : isGptInvite ? 'GPT Business via Invite sent!' : isAlight ? 'Alight Motion sent!' : isPerplexity ? 'Perplexity links sent!' : 'links sent!'}\n` +
+                    `✅ ${
+                        isAccountOrder
+                            ? 'Account(s) sent!'
+                            : isGptOrder
+                                ? 'GPT Basics sent!'
+                                : isGptInvite
+                                    ? 'GPT Business via Invite sent!'
+                                    : isGptGo
+                                        ? 'GPT Go sent!'
+                                        : isGptPlus
+                                            ? 'GPT Plus sent!'
+                                            : isAlight
+                                                ? 'Alight Motion sent!'
+                                                : isPerplexity
+                                                    ? 'Perplexity links sent!'
+                                                    : 'links sent!'
+                    }\n` +
                     `⏰ ${getCurrentDateTime()}`,
                     {
                         chat_id: chatId,
@@ -3116,22 +3210,30 @@ bot.on('callback_query', async (query) => {
                     `❌ *INSUFFICIENT STOCK!*\n\n` +
                     `Order #${orderId}\n` +
                     `Need: ${deliveryQuantity}\n` +
-                    `Available: ${isAccountOrder
-                        ? (getAccountStock().accounts || []).length
-                        : isGptOrder
-                            ? (getGptBasicsStock().accounts || []).length
-                            : isGptInvite
-                                ? (getGptInviteStock().accounts || []).length
-                                : isAlight
-                                    ? (getAlightMotionStock().accounts || []).length
-                                    : isPerplexity
-                                        ? (getPerplexityStock().links || []).length
-                                        : getStock().links.length}\n\n` +
+                    `Available: ${
+                        isAccountOrder
+                            ? (getAccountStock().accounts || []).length
+                            : isGptOrder
+                                ? (getGptBasicsStock().accounts || []).length
+                                : isGptInvite
+                                    ? (getGptInviteStock().accounts || []).length
+                                    : isGptGo
+                                        ? (getGptGoStock().accounts || []).length
+                                        : isGptPlus
+                                            ? (getGptPlusStock().accounts || []).length
+                                            : isAlight
+                                                ? (getAlightMotionStock().accounts || []).length
+                                                : isPerplexity
+                                                    ? (getPerplexityStock().links || []).length
+                                                    : getStock().links.length
+                    }\n\n` +
                     (isAccountOrder
                         ? 'Add more accounts!'
-                        : isPerplexity
-                            ? 'Add more Perplexity links!'
-                            : 'Add more links!'),
+                        : isGptOrder || isGptInvite || isGptGo || isGptPlus
+                            ? 'Add more GPT stock!'
+                            : isPerplexity
+                                ? 'Add more Perplexity links!'
+                                : 'Add more links!'),
                     {
                         chat_id: chatId,
                         message_id: messageId,
@@ -10621,7 +10723,7 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                     total_quantity: quantity,
                     original_price: unitPrice,
                     total_price: totalPrice,
-                    status: 'pending',
+                    status: 'awaiting_payment',
                     payment_method: 'qris',
                     date: new Date().toISOString(),
                     product: 'gpt_go'
