@@ -171,6 +171,26 @@ function escapeInlineCode(text) {
     return String(text).replace(/`/g, '\\`');
 }
 
+function notifyAdminOutOfStock(productLabel = 'this product') {
+    if (!bot || !botReady) return;
+
+    const safeLabel = escapeMarkdown(productLabel);
+    bot.sendMessage(
+        ADMIN_TELEGRAM_ID,
+        `🚨 *OUT OF STOCK!*\n\n` +
+        `❌ All ${safeLabel} have been sold out.\n` +
+        `📥 Please restock to continue sales.\n\n` +
+        `📅 ${getCurrentDateTime()}`,
+        { parse_mode: 'Markdown' }
+    ).catch(() => {});
+}
+
+function notifyOutOfStockIfDepleted(previousCount, newCount, productLabel) {
+    if (previousCount > 0 && newCount === 0) {
+        notifyAdminOutOfStock(productLabel);
+    }
+}
+
 function loadJSON(filename, defaultValue = {}) {
     try {
         if (fs.existsSync(filename)) {
@@ -378,6 +398,10 @@ function updateStock(quantity, links = null) {
                 { parse_mode: 'Markdown' }
             ).catch(() => {});
         }
+    }
+
+    if (links !== null) {
+        notifyOutOfStockIfDepleted(previousLinkCount, links.length, 'Spotify links');
     }
     
     if (links !== null && quantity > previousStock) {
@@ -1429,12 +1453,15 @@ async function deliverAccount(userId, orderId = 'N/A') {
     try {
         const accountStock = getAccountStock();
 
+        const previousCount = accountStock.accounts ? accountStock.accounts.length : 0;
+
         if (!accountStock.accounts || accountStock.accounts.length === 0) {
             return { success: false, message: '❌ No accounts available to deliver!' };
         }
 
         const nextAccount = accountStock.accounts.shift();
         updateAccountStock(accountStock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, accountStock.accounts.length, getProductLabel('account', 'Spotify Verified Accounts'));
 
         const safeAccount = escapeInlineCode(nextAccount);
 
@@ -1459,12 +1486,15 @@ async function deliverAccounts(userId, orderId, quantity, pricePerAccount = getA
     try {
         const accountStock = getAccountStock();
 
+        const previousCount = accountStock.accounts ? accountStock.accounts.length : 0;
+
         if (!accountStock.accounts || accountStock.accounts.length < quantity) {
             return { success: false, message: '❌ Not enough accounts available to deliver!' };
         }
 
         const delivered = accountStock.accounts.splice(0, quantity);
         updateAccountStock(accountStock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, accountStock.accounts.length, getProductLabel('account', 'Spotify Verified Accounts'));
 
         const credentials = delivered
             .map(acc => `• \`${escapeInlineCode(acc)}\``)
@@ -1494,12 +1524,15 @@ async function deliverGptBasics(userId, orderId, quantity, pricePerAccount = get
     try {
         const stock = getGptBasicsStock();
 
+        const previousCount = stock.accounts ? stock.accounts.length : 0;
+
         if (!stock.accounts || stock.accounts.length < quantity) {
             return { success: false, message: '❌ Not enough GPT Basics accounts available to deliver!' };
         }
 
         const delivered = stock.accounts.splice(0, quantity);
         updateGptBasicsStock(stock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, stock.accounts.length, getProductLabel('gpt_basic', 'GPT Basics Accounts'));
 
         const credentials = delivered
             .map(acc => `• \`${escapeInlineCode(acc)}\``)
@@ -1529,12 +1562,15 @@ async function deliverGptInvite(userId, orderId, quantity, pricePerAccount = get
     try {
         const stock = getGptInviteStock();
 
+        const previousCount = stock.accounts ? stock.accounts.length : 0;
+
         if (!stock.accounts || stock.accounts.length < quantity) {
             return { success: false, message: '❌ Not enough GPT Business via Invite accounts available to deliver!' };
         }
 
         const delivered = stock.accounts.splice(0, quantity);
         updateGptInviteStock(stock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, stock.accounts.length, getProductLabel('gpt_invite', 'GPT Business via Invite Accounts'));
 
         const credentials = delivered
             .map(acc => `• \`${escapeInlineCode(acc)}\``)
@@ -1564,12 +1600,15 @@ async function deliverGptGo(userId, orderId, quantity, pricePerAccount = getGptG
     try {
         const stock = getGptGoStock();
 
+        const previousCount = stock.accounts ? stock.accounts.length : 0;
+
         if (!stock.accounts || stock.accounts.length < quantity) {
             return { success: false, message: '❌ Not enough GPT Go accounts available to deliver!' };
         }
 
         const delivered = stock.accounts.splice(0, quantity);
         updateGptGoStock(stock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, stock.accounts.length, getProductLabel('gpt_go', 'GPT Go Accounts'));
 
         const credentials = delivered
             .map(acc => `• \`${escapeInlineCode(acc)}\``)
@@ -1598,12 +1637,15 @@ async function deliverGptPlus(userId, orderId, quantity, variant = 'nw', pricePe
     try {
         const stock = getGptPlusStock();
 
+        const previousCount = stock.accounts ? stock.accounts.length : 0;
+
         if (!stock.accounts || stock.accounts.length < quantity) {
             return { success: false, message: '❌ Not enough GPT Plus accounts available to deliver!' };
         }
 
         const delivered = stock.accounts.splice(0, quantity);
         updateGptPlusStock(stock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, stock.accounts.length, getProductLabel('gpt_plus', 'GPT Plus Accounts'));
 
         const credentials = delivered
             .map(acc => `• \`${escapeInlineCode(acc)}\``)
@@ -1633,12 +1675,15 @@ async function deliverAlightMotion(userId, orderId, quantity, pricePerAccount = 
     try {
         const stock = getAlightMotionStock();
 
+        const previousCount = stock.accounts ? stock.accounts.length : 0;
+
         if (!stock.accounts || stock.accounts.length < quantity) {
             return { success: false, message: '❌ Not enough Alight Motion accounts available to deliver!' };
         }
 
         const delivered = stock.accounts.splice(0, quantity);
         updateAlightMotionStock(stock.accounts);
+        notifyOutOfStockIfDepleted(previousCount, stock.accounts.length, getProductLabel('alight_motion', 'Alight Motion Accounts'));
 
         const credentials = delivered
             .map(acc => `• \`${escapeMarkdown(acc)}\``)
@@ -1667,12 +1712,15 @@ async function deliverPerplexity(userId, orderId, quantity, pricePerAccount = ge
     try {
         const stock = getPerplexityStock();
 
+        const previousCount = stock.links ? stock.links.length : 0;
+
         if (!stock.links || stock.links.length < quantity) {
             return { success: false, message: '❌ Not enough Perplexity AI links available to deliver!' };
         }
 
         const delivered = stock.links.splice(0, quantity);
         updatePerplexityStock(stock.links);
+        notifyOutOfStockIfDepleted(previousCount, stock.links.length, getProductLabel('perplexity', 'Perplexity AI Links'));
 
         const credentials = delivered
             .map(link => `• ${escapeMarkdown(link)}`)
