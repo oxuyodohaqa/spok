@@ -2627,27 +2627,52 @@ bot.on('photo', async (msg) => {
             return;
         }
         
+        const isAccountType = isAccountOrder(order);
+        const isGptOrder = isGptBasicsOrder(order);
+        const isGptInvite = isGptInviteOrder(order);
+        const isGptGo = isGptGoOrder(order);
+        const isGptPlus = isGptPlusOrder(order);
+        const isAlight = isAlightMotionOrder(order);
+        const isPerplexity = isPerplexityOrder(order);
+
+        const deliverySummary = formatOrderQuantitySummary(order);
+        const deliveryButtonLabel = isAccountType
+            ? 'Accounts'
+            : isGptOrder
+                ? 'GPT Basics'
+                : isGptInvite
+                    ? 'GPT Invite'
+                    : isGptGo
+                        ? 'GPT Go'
+                        : isGptPlus
+                            ? 'GPT Plus'
+                            : isAlight
+                                ? 'Alight Motion'
+                                : isPerplexity
+                                    ? 'Perplexity'
+                                    : 'Links';
+
         updateOrder(orderId, {
             payment_receipt: photo.file_id,
             receipt_uploaded_at: new Date().toISOString()
         });
-        
+
         addPendingPayment(userId, orderId, photo.file_id);
-        
+
         bot.sendMessage(chatId,
             `✅ *PAYMENT RECEIPT RECEIVED!*\n\n` +
             `📋 Order ID: #${orderId}\n` +
             `💰 Amount: Rp ${formatIDR(order.total_price)}\n\n` +
             `⏳ Your payment is being verified by admin...\n\n` +
-            `📱 You'll receive your links once verified!\n\n` +
+            `📱 You'll receive your ${deliverySummary} once verified!\n\n` +
             `⏰ Uploaded: ${getCurrentDateTime()}`,
             { parse_mode: 'Markdown' }
         ).catch(() => {});
-        
+
         const keyboard = {
             inline_keyboard: [
                 [
-                    { text: '✅ Verify & Send links', callback_data: `verify_payment_${orderId}` }
+                    { text: `✅ Verify & Send ${deliveryButtonLabel}`, callback_data: `verify_payment_${orderId}` }
                 ],
                 [
                     { text: '❌ Reject Payment', callback_data: `reject_payment_${orderId}` }
