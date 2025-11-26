@@ -4835,6 +4835,46 @@ else if (data.startsWith('claim_gift_')) {
         }
 
         else if (
+            data === 'choose_gpt_plus_fw' ||
+            data === 'choose_gpt_plus_nw'
+        ) {
+            const variant = normalizeGptPlusVariant(
+                data === 'choose_gpt_plus_fw'
+                    ? 'fw'
+                    : 'nw'
+            );
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+            const canBuy = available > 0;
+
+            userStates[chatId] = { ...userStates[chatId], selected_variant: variant };
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '💳 Pay with Balance', callback_data: 'pay_gpt_plus_balance' }],
+                    [{ text: '📱 Pay via QRIS', callback_data: 'pay_gpt_plus_qris' }],
+                    [{ text: '💳 Check Balance', callback_data: 'check_balance' }],
+                    [{ text: '🔙 Back', callback_data: 'buy_gpt_plus' }]
+                ]
+            };
+
+            const statusLine = available === 0
+                ? '❌ Out of stock! Add more GPT Plus first.'
+                : canBuy
+                    ? '✅ Choose payment method below.'
+                    : '⚠️ Not enough balance. Please top up.';
+
+            bot.editMessageText(
+                `✨ *GPT PLUS (${formatGptPlusVariantLabel(variant).toUpperCase()})*\n\n` +
+                `💵 Price: Rp ${formatIDR(getGptPlusPrice(variant))} (no bulk)\n` +
+                `📦 Accounts available: ${available}\n\n` +
+                `${statusLine}\n\n` +
+                `📌 You can buy 1 up to ${Math.max(1, Math.min(50, available))} accounts depending on stock.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown', reply_markup: keyboard }
+            ).catch(() => {});
+        }
+
+        else if (
             data === 'choose_gpt_invite_fw' ||
             data === 'choose_gpt_invite_nw'
         ) {
@@ -5748,6 +5788,74 @@ else if (data.startsWith('claim_gift_')) {
             ).catch(() => {});
         }
 
+        else if (data === 'pay_gpt_plus_balance' || data === 'confirm_buy_gpt_plus') {
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+            const maxQuantity = Math.max(1, Math.min(50, available));
+            const variant = normalizeGptPlusVariant(userStates[chatId]?.selected_variant);
+
+            if (available === 0) {
+                bot.answerCallbackQuery(query.id, {
+                    text: '❌ No GPT Plus in stock!',
+                    show_alert: true
+                }).catch(() => {});
+                return;
+            }
+
+            userStates[chatId] = {
+                state: 'awaiting_gpt_plus_quantity',
+                payment_method: 'balance',
+                userId: userId,
+                user: query.from,
+                max_quantity: maxQuantity,
+                variant
+            };
+
+            bot.editMessageText(
+                `🔢 *ENTER QUANTITY*\n\n` +
+                `💳 Paying with balance\n` +
+                `💵 Price: Rp ${formatIDR(getGptPlusPrice(variant))} per account\n` +
+                `📦 Available: ${available}\n` +
+                `📌 Min 1 | Max ${maxQuantity}\n\n` +
+                `Send the number of GPT Plus accounts you want to buy.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
+        else if (data === 'pay_gpt_plus_qris') {
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+            const maxQuantity = Math.max(1, Math.min(50, available));
+            const variant = normalizeGptPlusVariant(userStates[chatId]?.selected_variant);
+
+            if (available === 0) {
+                bot.answerCallbackQuery(query.id, {
+                    text: '❌ No GPT Plus in stock!',
+                    show_alert: true
+                }).catch(() => {});
+                return;
+            }
+
+            userStates[chatId] = {
+                state: 'awaiting_gpt_plus_quantity',
+                payment_method: 'qris',
+                userId: userId,
+                user: query.from,
+                max_quantity: maxQuantity,
+                variant
+            };
+
+            bot.editMessageText(
+                `🔢 *ENTER QUANTITY*\n\n` +
+                `📱 Paying via QRIS\n` +
+                `💵 Price: Rp ${formatIDR(getGptPlusPrice(variant))} per account\n` +
+                `📦 Available: ${available}\n` +
+                `📌 Min 1 | Max ${maxQuantity}\n\n` +
+                `Send the number of GPT Plus accounts you want to buy.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
         else if (data === 'pay_alight_balance' || data === 'confirm_buy_alight') {
             const alightStock = getAlightMotionStock();
             const available = alightStock.accounts?.length || 0;
@@ -6467,6 +6575,70 @@ else if (data.startsWith('claim_gift_')) {
                 `📦 Available: ${available}\n` +
                 `📌 Min 1 | Max ${maxQuantity}\n\n` +
                 `Send the number of GPT Basics accounts you want to buy.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
+        else if (data === 'pay_gpt_go_balance' || data === 'confirm_buy_gpt_go') {
+            const gptGoStock = getGptGoStock();
+            const available = gptGoStock.accounts?.length || 0;
+            const maxQuantity = Math.max(1, Math.min(50, available));
+
+            if (available === 0) {
+                bot.answerCallbackQuery(query.id, {
+                    text: '❌ No GPT Go in stock!',
+                    show_alert: true
+                }).catch(() => {});
+                return;
+            }
+
+            userStates[chatId] = {
+                state: 'awaiting_gpt_go_quantity',
+                payment_method: 'balance',
+                userId: userId,
+                user: query.from,
+                max_quantity: maxQuantity
+            };
+
+            bot.editMessageText(
+                `🔢 *ENTER QUANTITY*\n\n` +
+                `💳 Paying with balance\n` +
+                `💵 Price: Rp ${formatIDR(getGptGoPrice())} per account\n` +
+                `📦 Available: ${available}\n` +
+                `📌 Min 1 | Max ${maxQuantity}\n\n` +
+                `Send the number of GPT Go accounts you want to buy.`,
+                { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
+
+        else if (data === 'pay_gpt_go_qris') {
+            const gptGoStock = getGptGoStock();
+            const available = gptGoStock.accounts?.length || 0;
+            const maxQuantity = Math.max(1, Math.min(50, available));
+
+            if (available === 0) {
+                bot.answerCallbackQuery(query.id, {
+                    text: '❌ No GPT Go in stock!',
+                    show_alert: true
+                }).catch(() => {});
+                return;
+            }
+
+            userStates[chatId] = {
+                state: 'awaiting_gpt_go_quantity',
+                payment_method: 'qris',
+                userId: userId,
+                user: query.from,
+                max_quantity: maxQuantity
+            };
+
+            bot.editMessageText(
+                `🔢 *ENTER QUANTITY*\n\n` +
+                `📱 Paying via QRIS\n` +
+                `💵 Price: Rp ${formatIDR(getGptGoPrice())} per account\n` +
+                `📦 Available: ${available}\n` +
+                `📌 Min 1 | Max ${maxQuantity}\n\n` +
+                `Send the number of GPT Go accounts you want to buy.`,
                 { chat_id: chatId, message_id: messageId, parse_mode: 'Markdown' }
             ).catch(() => {});
         }
@@ -10696,6 +10868,183 @@ else if (state.state === 'awaiting_gift_one_per_user' && isAdmin(userId)) {
                 `Customer: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')}\n` +
                 `User ID: ${userId}\n` +
                 `Type: ${formatGptInviteVariantLabel(variant)}\n` +
+                `Quantity: ${quantity}\n` +
+                `Total: Rp ${formatIDR(totalPrice)}\n` +
+                `Status: Awaiting Payment`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => {});
+
+            delete userStates[chatId];
+        }
+
+        else if (state.state === 'awaiting_gpt_plus_quantity') {
+            const quantity = parseInt(text.replace(/\D/g, ''));
+            const paymentMethod = state.payment_method || 'balance';
+            const variant = normalizeGptPlusVariant(state.variant);
+            const gptPlusStock = getGptPlusStock();
+            const available = gptPlusStock.accounts?.length || 0;
+            const maxQuantity = state.max_quantity || Math.max(1, Math.min(50, available));
+            const selectedQuantity = Math.min(quantity || 0, maxQuantity);
+
+            if (isNaN(quantity) || quantity < 1) {
+                bot.sendMessage(chatId, '❌ Please send a valid number!').catch(() => {});
+                return;
+            }
+
+            if (selectedQuantity !== quantity) {
+                bot.sendMessage(chatId, `⚠️ Maximum you can order now is ${maxQuantity} account(s).`).catch(() => {});
+                return;
+            }
+
+            if (quantity > available) {
+                bot.sendMessage(chatId, `❌ Only ${available} GPT Plus account(s) available right now!`).catch(() => {});
+                return;
+            }
+
+            const unitPrice = getGptPlusPrice(variant);
+            const totalPrice = quantity * unitPrice;
+            const users = getUsers();
+
+            if (paymentMethod === 'balance') {
+                const balance = getBalance(userId);
+
+                if (balance < totalPrice) {
+                    const shortfall = totalPrice - balance;
+
+                    const keyboard = {
+                        inline_keyboard: [
+                            [{ text: '💵 Top Up via QRIS', callback_data: 'topup_balance' }],
+                            [{ text: '🔙 Back', callback_data: 'buy_gpt_plus' }]
+                        ]
+                    };
+
+                    bot.sendMessage(chatId,
+                        `⚠️ Balance not enough.\n\n` +
+                        `Requested: ${quantity} GPT Plus account(s)\n` +
+                        `Total needed: Rp ${formatIDR(totalPrice)}\n` +
+                        `Current balance: Rp ${formatIDR(balance)}\n` +
+                        `Shortfall: Rp ${formatIDR(shortfall)}\n\n` +
+                        `Top up with QRIS then try again.`,
+                        { parse_mode: 'Markdown', reply_markup: keyboard }
+                    ).catch(() => {});
+                    return;
+                }
+
+                updateBalance(userId, -totalPrice);
+
+                const orderId = getNextOrderId();
+                const order = {
+                    order_id: orderId,
+                    user_id: userId,
+                    username: users[userId]?.username || msg.from.username || 'unknown',
+                    quantity: quantity,
+                    total_quantity: quantity,
+                    original_price: unitPrice,
+                    total_price: totalPrice,
+                    status: 'completed',
+                    payment_method: 'balance',
+                    date: new Date().toISOString(),
+                    completed_at: new Date().toISOString(),
+                    product: 'gpt_plus',
+                    variant
+                };
+
+                addOrder(order);
+
+                if (!users[userId]) {
+                    addUser(userId, msg.from);
+                }
+
+                const updatedUsers = getUsers();
+                updatedUsers[userId].total_orders = (updatedUsers[userId].total_orders || 0) + 1;
+                updatedUsers[userId].completed_orders = (updatedUsers[userId].completed_orders || 0) + 1;
+                saveJSON(USERS_FILE, updatedUsers);
+
+                const delivery = await deliverGptPlus(userId, orderId, quantity, variant, unitPrice);
+                const newBalance = getBalance(userId);
+
+                if (delivery.success) {
+                    bot.sendMessage(
+                        chatId,
+                        `✅ *GPT PLUS PURCHASED!*\n\n` +
+                        `📋 Order: #${orderId}\n` +
+                        `🛡️ Type: ${formatGptPlusVariantLabel(variant)}\n` +
+                        `🔢 Quantity: ${quantity}\n` +
+                        `💵 Paid: Rp ${formatIDR(totalPrice)}\n` +
+                        `💳 Balance left: Rp ${formatIDR(newBalance)}\n\n` +
+                        `✨ Access delivered above!`,
+                        { parse_mode: 'Markdown' }
+                    ).catch(() => {});
+                } else {
+                    bot.sendMessage(chatId, delivery.message || '❌ Delivery failed, admin will assist.').catch(() => {});
+                }
+
+                delete userStates[chatId];
+                return;
+            }
+
+            const orderId = getNextOrderId();
+            const order = {
+                order_id: orderId,
+                user_id: userId,
+                username: users[userId]?.username || msg.from.username || 'unknown',
+                quantity: quantity,
+                total_quantity: quantity,
+                original_price: unitPrice,
+                total_price: totalPrice,
+                status: 'awaiting_payment',
+                payment_method: 'qris',
+                date: new Date().toISOString(),
+                product: 'gpt_plus',
+                variant
+            };
+
+            addOrder(order);
+
+            const updatedUsers = getUsers();
+            updatedUsers[userId].total_orders = (updatedUsers[userId].total_orders || 0) + 1;
+            saveJSON(USERS_FILE, updatedUsers);
+
+            const gopay = getQRIS();
+            const captionText =
+                `✨ *PAYMENT NEEDED*\n\n` +
+                `📋 Order ID: #${orderId}\n` +
+                `Product: GPT Plus\n` +
+                `Type: ${formatGptPlusVariantLabel(variant)}\n` +
+                `Quantity: ${quantity}\n` +
+                `Total: Rp ${formatIDR(totalPrice)}\n\n` +
+                `📱 Scan QRIS then send screenshot with caption: #${orderId}\n` +
+                `Or DM admin: ${ADMIN_USERNAME}`;
+
+            if (gopay.file_id) {
+                bot.sendPhoto(chatId, gopay.file_id, {
+                    caption: captionText,
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📱 DM Admin', url: `https://t.me/${ADMIN_USERNAME.replace('@', '')}` }],
+                            [{ text: '🔙 Back', callback_data: 'back_to_main' }]
+                        ]
+                    }
+                }).catch(() => {});
+            } else {
+                bot.sendMessage(chatId, captionText, {
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '📱 DM Admin', url: `https://t.me/${ADMIN_USERNAME.replace('@', '')}` }],
+                            [{ text: '🔙 Back', callback_data: 'back_to_main' }]
+                        ]
+                    }
+                }).catch(() => {});
+            }
+
+            bot.sendMessage(ADMIN_TELEGRAM_ID,
+                `🧾 *NEW GPT PLUS ORDER*\n\n` +
+                `Order ID: #${orderId}\n` +
+                `Customer: @${escapeMarkdown(updatedUsers[userId]?.username || 'unknown')}\n` +
+                `User ID: ${userId}\n` +
+                `Type: ${formatGptPlusVariantLabel(variant)}\n` +
                 `Quantity: ${quantity}\n` +
                 `Total: Rp ${formatIDR(totalPrice)}\n` +
                 `Status: Awaiting Payment`,
