@@ -907,6 +907,14 @@ function formatOrderQuantitySummary(order) {
         const total = getOrderTotalQuantity(order);
         return `${total} GPT Business via Invite account${total > 1 ? 's' : ''}`;
     }
+    if (isGptGoOrder(order)) {
+        const total = getOrderTotalQuantity(order);
+        return `${total} GPT Go account${total > 1 ? 's' : ''}`;
+    }
+    if (isGptPlusOrder(order)) {
+        const total = getOrderTotalQuantity(order);
+        return `${total} GPT Plus account${total > 1 ? 's' : ''}`;
+    }
     if (isAlightMotionOrder(order)) {
         const total = getOrderTotalQuantity(order);
         return `${total} Alight Motion account${total > 1 ? 's' : ''}`;
@@ -1755,6 +1763,32 @@ function broadcastGptInviteRestock(addedCount, totalCount) {
         `📨 Total Stock: *${totalCount}* ready to claim`,
         '',
         `💵 Price: Rp ${formatIDR(getGptInvitePrice())} (no bulk)`,
+        '⚡ Order now before stock runs out!'
+    ].join('\n');
+
+    return broadcastToAll(message, { parse_mode: 'Markdown' });
+}
+
+function broadcastGptGoRestock(addedCount, totalCount) {
+    const message = [
+        '🚀 *GPT GO RESTOCKED!*',
+        `📤 Added: *${addedCount}* account${addedCount > 1 ? 's' : ''}`,
+        `🧠 Total Stock: *${totalCount}* ready to claim`,
+        '',
+        `💵 Price: ${formatGptGoPriceSummary()}`,
+        '⚡ Order now before stock runs out!'
+    ].join('\n');
+
+    return broadcastToAll(message, { parse_mode: 'Markdown' });
+}
+
+function broadcastGptPlusRestock(addedCount, totalCount) {
+    const message = [
+        '✨ *GPT PLUS RESTOCKED!*',
+        `📤 Added: *${addedCount}* account${addedCount > 1 ? 's' : ''}`,
+        `💫 Total Stock: *${totalCount}* ready to claim`,
+        '',
+        `💵 Prices: ${formatGptPlusPriceSummary()}`,
         '⚡ Order now before stock runs out!'
     ].join('\n');
 
@@ -2756,6 +2790,8 @@ bot.on('document', (msg) => {
                                 const merged = [...(gptGoStock.accounts || []), ...lines];
                                 updateGptGoStock(merged);
 
+                                broadcastGptGoRestock(lines.length, merged.length).catch(() => {});
+
                                 bot.editMessageText(
                                     `✅ *GPT GO UPLOADED!*\n\n` +
                                     `📤 Added: ${lines.length} accounts\n` +
@@ -2774,6 +2810,8 @@ bot.on('document', (msg) => {
                                 const gptPlusStock = getGptPlusStock();
                                 const merged = [...(gptPlusStock.accounts || []), ...lines];
                                 updateGptPlusStock(merged);
+
+                                broadcastGptPlusRestock(lines.length, merged.length).catch(() => {});
 
                                 bot.editMessageText(
                                     `✅ *GPT PLUS UPLOADED!*\n\n` +
