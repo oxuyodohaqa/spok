@@ -12,6 +12,7 @@ const CONFIG = {
     studentsFile: 'students.txt',
     receiptsDir: 'receipts',
     outputFile: 'sukses.txt',
+    customVerificationLink: 'https://services.sheerid.com/verify/67c8c14f5f17a83b745e3f82/?verificationId=6928774136cf1a52cc59895a',
     maxConcurrent: 300,
     batchSize: 300,
     timeout: 300000,
@@ -466,6 +467,52 @@ const COUNTRIES = {
         collegesFile: 'sheerid_ph.json'
     }
 };
+
+// CUSTOM VERIFICATION LINK PARSER
+function parseCustomVerificationLink(link) {
+    try {
+        const url = new URL(link);
+        const parts = url.pathname.split('/').filter(Boolean);
+
+        if (parts.length >= 2 && parts[0].toLowerCase() === 'verify') {
+            return {
+                programId: parts[1],
+                verificationId: url.searchParams.get('verificationId'),
+                url: link
+            };
+        }
+    } catch (error) {
+        console.log(chalk.yellow(`⚠️ Invalid custom verification link: ${error.message}`));
+    }
+
+    return null;
+}
+
+function applyCustomVerificationLink(countryConfig) {
+    const overrideLink = process.env.SHEERID_VERIFICATION_LINK || CONFIG.customVerificationLink;
+
+    if (!overrideLink) return;
+
+    const parsed = parseCustomVerificationLink(overrideLink);
+
+    if (!parsed || !parsed.programId) {
+        console.log(chalk.yellow('⚠️ Custom verification link missing program ID - skipping override'));
+        return;
+    }
+
+    countryConfig.programId = parsed.programId;
+    countryConfig.sheeridUrl = parsed.url;
+    countryConfig.submitEndpoint = `https://services.sheerid.com/rest/v2/verification/program/${parsed.programId}/step/collectStudentPersonalInfo`;
+    countryConfig.fixedVerificationId = parsed.verificationId;
+    countryConfig.overrideLinkApplied = true;
+
+    console.log(chalk.blue(`🔗 Using custom verification link for ${countryConfig.code.toUpperCase()}: ${overrideLink}`));
+    console.log(chalk.blue(`🆔 Program ID override: ${parsed.programId}`));
+
+    if (parsed.verificationId) {
+        console.log(chalk.blue(`🔑 Fixed verificationId override: ${parsed.verificationId}`));
+    }
+}
 
 // USER AGENTS
 const USER_AGENTS = [
@@ -1034,14 +1081,18 @@ class VerificationSession {
     async init() {
         try {
             console.log(`[${this.id}] 🚀 [${this.countryConfig.flag}] Initializing session...`);
-            
+
             const delay = Math.floor(Math.random() * 1000) + 500;
             await new Promise(resolve => setTimeout(resolve, delay));
-            
+
             const response = await this.client.get(this.countryConfig.sheeridUrl);
-            
+
             this.requestCount++;
             this.currentStep = 'initialized';
+            if (this.countryConfig.fixedVerificationId) {
+                this.verificationId = this.countryConfig.fixedVerificationId;
+                console.log(`[${this.id}] 🔗 [${this.countryConfig.flag}] Fixed verificationId preset: ${this.verificationId}`);
+            }
             console.log(`[${this.id}] ✅ [${this.countryConfig.flag}] Session initialized`);
             return response.status === 200;
         } catch (error) {
@@ -1085,7 +1136,10 @@ class VerificationSession {
             
             this.requestCount++;
             
-            if (response.data?.verificationId) {
+            if (this.countryConfig.fixedVerificationId) {
+                this.verificationId = this.countryConfig.fixedVerificationId;
+                this.currentStep = response.data?.currentStep || 'collectStudentPersonalInfo';
+            } else if (response.data?.verificationId) {
                 this.verificationId = response.data.verificationId;
                 this.currentStep = response.data.currentStep || 'collectStudentPersonalInfo';
             } else {
@@ -1111,6 +1165,10 @@ class VerificationSession {
     
     // ✅ ENHANCED: PROPER SSO HANDLING WITH CANCELLATION
     async waitForCorrectStep(maxWait = 6, collegeMatcher, statsTracker) {
+        if (!this.verificationId && this.countryConfig.fixedVerificationId) {
+            this.verificationId = this.countryConfig.fixedVerificationId;
+        }
+
         if (!this.verificationId) return 'error';
         
         console.log(`[${this.id}] ⏳ [${this.countryConfig.flag}] Checking step progression...`);
@@ -2174,13 +2232,15 @@ async function main() {
     try {
         // SELECT COUNTRY
         const selectedCountryCode = await selectCountry();
-        const countryConfig = COUNTRIES[selectedCountryCode];
+        const countryConfig = { ...COUNTRIES[selectedCountryCode] };
+
+        applyCustomVerificationLink(countryConfig);
         
         CONFIG.selectedCountry = selectedCountryCode;
         CONFIG.countryConfig = countryConfig;
         
         console.log(chalk.green(`\n✅ Selected Country: ${countryConfig.flag} ${countryConfig.name} (${countryConfig.code.toUpperCase()})`));
-        console.log(chalk.blue(`🆔 Program ID: ${countryConfig.programId}`));
+        console.log(chalk.blue(`🆔 Program ID: ${countryConfig.programId}${countryConfig.overrideLinkApplied ? ' (custom override)' : ''}`));
         console.log(chalk.blue(`📚 Using colleges file: ${countryConfig.collegesFile}`));
         console.log(chalk.red(`⛔ LEGIT ONLY: Only exact JSON matches will be processed`));
         console.log(chalk.blue(`🔐 SSO SUPPORT: Automatic SSO cancellation & document upload`));
@@ -2299,7 +2359,7 @@ process.on('SIGINT', () => {
 // STARTUP MESSAGE
 console.log(chalk.cyan(`
 🎵 SPOTIFY SHEERID - MULTI-COUNTRY MODE (24 COUNTRIES SUPPORTED) 🎵
-🌍 Program ID: 63fd266996552d469aea40e1 (Same for ALL countries)
+🌍 Program ID: 63fd266996552d469aea40e1 by default (custom link overrides)
 🔐 COMPLETE SSO HANDLING - Automatic SSO cancellation & document upload
 📚 Source: Reads country-specific JSON files - EXACT MATCHES ONLY
 ⛔ NO FALLBACK: Students without exact matches are skipped
@@ -2315,6 +2375,10 @@ SUPPORTED COUNTRIES (24):
 🇪🇸 ES  🇮🇹 IT  🇧🇷 BR  🇲🇽 MX  🇳🇱 NL  🇸🇪 SE  🇳🇴 NO  🇩🇰 DK
 🇯🇵 JP  🇰🇷 KR  🇸🇬 SG  🇳🇿 NZ  🇿🇦 ZA  🇨🇳 CN  🇦🇪 AE  🇵🇭 PH
 `));
+
+if (CONFIG.customVerificationLink || process.env.SHEERID_VERIFICATION_LINK) {
+    console.log(chalk.blue(`🔗 Custom verification link active: ${process.env.SHEERID_VERIFICATION_LINK || CONFIG.customVerificationLink}`));
+}
 
 // RUN MAIN FUNCTION
 if (require.main === module) {
