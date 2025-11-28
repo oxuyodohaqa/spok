@@ -721,7 +721,7 @@ class ExactJsonCollegeMatcher {
         this.invalidCollegeIds = new Set();
         this.workingCollegeIds = new Set();
         this.ssoCollegeIds = new Set();
-        this.receiptPattern = /^(\d+)_(\d+)\.(png|jpg|jpeg|pdf|webp)$/i;
+        this.receiptPattern = /^(?:[a-z]+_)?(\d+)[_-](\d+)(?:_[a-z0-9]+)?\.(png|jpg|jpeg|pdf|webp)$/i;
         this.successCount = 0;
         this.failedCount = 0;
         this.exactMatchCount = 0;
@@ -737,19 +737,37 @@ class ExactJsonCollegeMatcher {
         }
         
         const files = fs.readdirSync(CONFIG.receiptsDir);
-        const receiptFiles = files.filter(file => this.receiptPattern.test(file));
-        
-        if (receiptFiles.length === 0) {
+        const allowedExtensions = ['png', 'jpg', 'jpeg', 'pdf', 'webp'];
+
+        const parsedFiles = files
+            .filter(file => {
+                const lower = file.toLowerCase();
+                return allowedExtensions.some(ext => lower.endsWith(`.${ext}`));
+            })
+            .map(file => {
+                const patternMatch = file.match(this.receiptPattern);
+                if (patternMatch) {
+                    return { file, studentId: patternMatch[1], collegeId: parseInt(patternMatch[2]) };
+                }
+
+                const digits = file.match(/\d+/g) || [];
+                if (digits.length >= 2) {
+                    return { file, studentId: digits[0], collegeId: parseInt(digits[1]) };
+                }
+
+                return null;
+            })
+            .filter(Boolean);
+
+        if (parsedFiles.length === 0) {
             console.log(chalk.red(`❌ No receipt files found`));
             return false;
         }
-        
-        receiptFiles.forEach(file => {
-            const match = file.match(this.receiptPattern);
-            if (match) {
-                const studentId = match[1];
-                const collegeId = parseInt(match[2]);
-                this.studentCollegeMap.set(studentId, collegeId);
+
+        parsedFiles.forEach(({ studentId, collegeId, file }) => {
+            this.studentCollegeMap.set(studentId, collegeId);
+            if (!this.receiptPattern.test(file)) {
+                console.log(chalk.yellow(`ℹ️ Parsed non-standard receipt name ${file} → ${studentId}_${collegeId}`));
             }
         });
         
