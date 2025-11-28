@@ -968,6 +968,7 @@ class VerificationSession {
         this.submittedCollegeId = null;
         this.uploadAttempts = [];
         this.ssoAttempted = false;
+        this.ssoRedirectUrl = null;
     }
     
     createClient() {
@@ -1137,18 +1138,25 @@ class VerificationSession {
                         collegeMatcher.markCollegeAsSso(this.submittedCollegeId);
                         statsTracker.recordSsoCollege(this.submittedCollegeId);
                     }
-                    
+
                     // Try to cancel SSO and move to document upload
                     const cancelResult = await this.cancelSsoProcess();
+                    statsTracker.recordSsoCancellation(cancelResult.success);
+
                     if (cancelResult.success) {
                         console.log(`[${this.id}] ✅ [${this.countryConfig.flag}] SSO cancelled successfully, moved to: ${cancelResult.currentStep}`);
-                        statsTracker.recordSsoCancellation(true);
                         return cancelResult.currentStep;
-                    } else {
-                        console.log(`[${this.id}] ❌ [${this.countryConfig.flag}] SSO cancellation failed: ${cancelResult.reason}`);
-                        statsTracker.recordSsoCancellation(false);
-                        return 'sso_failed';
                     }
+
+                    console.log(`[${this.id}] ❌ [${this.countryConfig.flag}] SSO cancellation failed: ${cancelResult.reason}`);
+
+                    const ssoStart = await this.startSsoProcess();
+                    if (ssoStart.success) {
+                        console.log(`[${this.id}] 🔀 [${this.countryConfig.flag}] Proceeding with captured SSO redirect`);
+                        return 'sso_redirect';
+                    }
+
+                    return 'sso_failed';
                 }
                 
                 if (this.currentStep === 'error' || (data.errorIds && data.errorIds.length > 0)) {
@@ -1185,7 +1193,9 @@ class VerificationSession {
     async cancelSsoProcess() {
         try {
             console.log(`[${this.id}] 🔄 [${this.countryConfig.flag}] Cancelling SSO process...`);
-            
+
+            this.ssoAttempted = true;
+
             const cancelUrl = this.countryConfig.ssoCancelEndpoint.replace('{verificationId}', this.verificationId);
             
             const response = await this.client.delete(cancelUrl, {
@@ -1198,7 +1208,6 @@ class VerificationSession {
             
             if (response.status === 200 && response.data) {
                 this.currentStep = response.data.currentStep;
-                this.ssoAttempted = true;
                 console.log(`[${this.id}] ✅ [${this.countryConfig.flag}] SSO cancelled, new step: ${this.currentStep}`);
                 return {
                     success: true,
@@ -1227,7 +1236,9 @@ class VerificationSession {
     async startSsoProcess() {
         try {
             console.log(`[${this.id}] 🔐 [${this.countryConfig.flag}] Starting SSO process...`);
-            
+
+            this.ssoAttempted = true;
+
             const ssoUrl = this.countryConfig.ssoStartEndpoint.replace('{verificationId}', this.verificationId);
             
             const response = await this.client.get(ssoUrl, {
@@ -1238,6 +1249,7 @@ class VerificationSession {
             if (response.status === 307 && response.headers.location) {
                 const redirectUrl = response.headers.location;
                 console.log(`[${this.id}] 🔐 [${this.countryConfig.flag}] SSO redirect to: ${redirectUrl}`);
+                this.ssoRedirectUrl = redirectUrl;
                 this.ssoAttempted = true;
                 return {
                     success: true,
@@ -1252,6 +1264,7 @@ class VerificationSession {
             if (error.response?.status === 307 && error.response.headers?.location) {
                 const redirectUrl = error.response.headers.location;
                 console.log(`[${this.id}] 🔐 [${this.countryConfig.flag}] SSO redirect (via error): ${redirectUrl}`);
+                this.ssoRedirectUrl = redirectUrl;
                 this.ssoAttempted = true;
                 return {
                     success: true,
@@ -1499,40 +1512,82 @@ function generateDOB() {
     return { day, month, year };
 }
 
+function buildSearchTokens(rawTokens = []) {
+    const tokens = new Set();
+
+    rawTokens.forEach(token => {
+        if (!token) return;
+        const cleaned = token.trim();
+        if (!cleaned) return;
+
+        tokens.add(cleaned.toLowerCase());
+
+        const numericMatches = cleaned.match(/\d+(?:_\d+)*/g);
+        if (numericMatches) {
+            numericMatches.forEach(match => tokens.add(match.toLowerCase()));
+        }
+    });
+
+    return Array.from(tokens);
+}
+
+function parseStudentLine(line, countryConfig) {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+
+    const parts = trimmed.split('|').map(s => s.trim()).filter(Boolean);
+    let namePart = null;
+    let studentId = null;
+    let extraTokens = [];
+
+    if (parts.length >= 2) {
+        [namePart, studentId] = parts;
+        extraTokens = parts.slice(1);
+    } else {
+        const segments = trimmed.split(/\s+/);
+        studentId = segments[0];
+        extraTokens = segments;
+    }
+
+    if (!studentId) return null;
+
+    let firstName = 'STUDENT';
+    let lastName = 'USER';
+
+    if (namePart) {
+        if (namePart.includes(',')) {
+            [lastName, firstName] = namePart.split(',').map(s => s.trim());
+        } else {
+            const nameParts = namePart.split(' ').filter(Boolean);
+            firstName = nameParts[0] || 'FIRST';
+            lastName = nameParts.slice(1).join(' ') || 'LAST';
+        }
+    }
+
+    const searchTokens = buildSearchTokens([studentId, ...extraTokens]);
+
+    return {
+        firstName: firstName.toUpperCase(),
+        lastName: lastName.toUpperCase(),
+        email: generateEmail(firstName, lastName, countryConfig),
+        studentId: studentId.trim(),
+        searchTokens
+    };
+}
+
 function loadStudents(countryConfig) {
     try {
         if (!fs.existsSync(CONFIG.studentsFile)) {
             console.log(chalk.red(`❌ ${CONFIG.studentsFile} not found`));
             return [];
         }
-        
+
         const content = fs.readFileSync(CONFIG.studentsFile, 'utf-8');
         const students = content.split('\n')
             .filter(line => line.trim())
-            .map(line => {
-                const parts = line.split('|').map(s => s.trim());
-                if (parts.length < 2) return null;
-                
-                const [name, studentId] = parts;
-                
-                let firstName, lastName;
-                if (name.includes(',')) {
-                    [lastName, firstName] = name.split(',').map(s => s.trim());
-                } else {
-                    const nameParts = name.split(' ');
-                    firstName = nameParts[0] || 'FIRST';
-                    lastName = nameParts.slice(1).join(' ') || 'LAST';
-                }
-                
-                return {
-                    firstName: firstName.toUpperCase(),
-                    lastName: lastName.toUpperCase(),
-                    email: generateEmail(firstName, lastName, countryConfig),
-                    studentId: studentId.trim()
-                };
-            })
+            .map(line => parseStudentLine(line, countryConfig))
             .filter(s => s);
-            
+
         console.log(chalk.green(`👥 Loaded ${students.length} students`));
         return students;
     } catch (error) {
@@ -1541,19 +1596,24 @@ function loadStudents(countryConfig) {
     }
 }
 
-function findStudentFiles(studentId) {
+function findStudentFiles(studentId, extraTokens = []) {
     const dirs = [CONFIG.receiptsDir, 'images', 'documents'];
     const extensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
     const files = [];
-    
+
+    const searchTokens = buildSearchTokens([studentId, ...extraTokens]);
+    if (searchTokens.length === 0) return files;
+
     for (const dir of dirs) {
         if (!fs.existsSync(dir)) continue;
-        
+
         try {
             const dirFiles = fs.readdirSync(dir);
             for (const file of dirFiles) {
-                if (file.toLowerCase().includes(studentId.toLowerCase()) &&
-                    extensions.some(ext => file.toLowerCase().endsWith(ext))) {
+                const lowerFile = file.toLowerCase();
+                const matchesStudent = searchTokens.some(token => lowerFile.includes(token));
+
+                if (matchesStudent && extensions.some(ext => lowerFile.endsWith(ext))) {
                     const filePath = path.join(dir, file);
                     if (fs.existsSync(filePath)) {
                         const stats = fs.statSync(filePath);
@@ -1569,7 +1629,7 @@ function findStudentFiles(studentId) {
             }
         } catch (e) { continue; }
     }
-    
+
     return files.sort((a, b) => b.size - a.size);
 }
 
@@ -1706,7 +1766,39 @@ async function processStudent(student, sessionId, collegeMatcher, deleteManager,
             statsTracker.recordCollegeAttempt(college.id, college.name, false);
             return null;
         }
-        
+
+        if (stepResult === 'sso_redirect') {
+            console.log(`[${sessionId}] 🔐 [${countryConfig.flag}] Using SSO redirect flow for ${student.studentId}`);
+
+            const spotifyUrl = await session.getSpotifyUrl();
+            const finalUrl = spotifyUrl || session.ssoRedirectUrl || countryConfig.finalLinkFormat.replace('{verificationId}', session.verificationId);
+
+            if (finalUrl) {
+                const result = {
+                    student,
+                    url: finalUrl,
+                    type: 'sso_redirect',
+                    college: college.name,
+                    ssoForced: true,
+                    ssoCancelled: false
+                };
+
+                saveSpotifyUrl(student, finalUrl, session.verificationId, countryConfig, session.getUploadStats(), true, false);
+                deleteManager.markStudentSuccess(student.studentId);
+                collegeMatcher.addSuccess(true);
+                statsTracker.recordSuccess(result);
+                statsTracker.recordCollegeAttempt(college.id, college.name, true);
+                return result;
+            }
+
+            console.log(`[${sessionId}] ❌ [${countryConfig.flag}] No SSO redirect URL found`);
+            deleteManager.markStudentFailed(student.studentId);
+            collegeMatcher.addFailure();
+            statsTracker.recordFailureReason('ssoFailed');
+            statsTracker.recordCollegeAttempt(college.id, college.name, false);
+            return null;
+        }
+
         const shouldAttemptUpload = (stepResult === 'docUpload' || stepResult === 'collectStudentPersonalInfo');
         
         if (!shouldAttemptUpload) {
@@ -1718,7 +1810,7 @@ async function processStudent(student, sessionId, collegeMatcher, deleteManager,
         }
 
         // STEP 5: Find all student files
-        const files = findStudentFiles(student.studentId);
+        const files = findStudentFiles(student.studentId, student.searchTokens);
         if (files.length === 0) {
             console.log(`[${sessionId}] ❌ [${countryConfig.flag}] No files found for upload`);
             deleteManager.markStudentFailed(student.studentId);
